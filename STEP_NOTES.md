@@ -1,5 +1,55 @@
 # Step Notes (Public)
 
+## Issues So Far + Fixes
+
+### 1) Wrong repository/remote used initially
+- Symptom: work was happening in a different repo (`FYP` / `AppDev`) than intended.
+- Fix:
+  - repointed `origin` to `https://github.com/RalphjCruz/MoMa-Acquisition-Platform.git`
+  - fetched and tracked `origin/main`.
+- Prevention:
+  - always run `git remote -v` and `git branch -vv` before starting a new step.
+
+### 2) Server failed to start after dependency updates
+- Symptom: `Unable to connect to the remote server` from curl/browser.
+- Root cause: startup crashed before listen.
+- Fix:
+  - run `node src/server.js` directly to reveal real startup error.
+- Prevention:
+  - when endpoint checks fail, inspect startup logs first (not network first).
+
+### 3) MoMA download returned Git LFS pointer, not JSON
+- Symptom: JSON parse failed with content like `version https://git-lfs.github.com/spec/v1`.
+- Root cause: using `raw.githubusercontent.com` for an LFS-managed large file.
+- Fix:
+  - switched subset source to media URL:
+    - `https://media.githubusercontent.com/media/MuseumofModernArt/collection/main/Artworks.json`
+  - updated subset builder to stream first N objects.
+- Prevention:
+  - validate downloaded content shape before parsing full dataset.
+
+### 4) BOM-related JSON parse error
+- Symptom: `Unexpected token '﻿'` when parsing subset file.
+- Fix:
+  - strip UTF-8 BOM before `JSON.parse` in seed service.
+- Prevention:
+  - sanitize file input when reading JSON from generated files.
+
+### 5) MoMA `Artist` field not always string
+- Symptom: `item.Artist?.trim is not a function`.
+- Root cause: mixed data types (string/array/null).
+- Fix:
+  - added normalization helper handling arrays, strings, nulls safely.
+- Prevention:
+  - never assume external dataset field types; normalize aggressively.
+
+### 6) `package.json` script block duplication
+- Symptom: invalid `package.json` after patching.
+- Fix:
+  - merged into one valid `scripts` object.
+- Prevention:
+  - validate file after edits (`npm install` is a quick structure check).
+
 ## Step 3 - MongoDB + First Artwork Read API
 
 Date: 2026-04-23
@@ -48,4 +98,3 @@ Date: 2026-04-23
 - Service layer builds MongoDB filter/sort/pagination options.
 - Mongoose executes queries against seeded artwork collection.
 - Controller returns normalized JSON response contract for frontend use.
-
