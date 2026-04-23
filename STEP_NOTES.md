@@ -351,6 +351,101 @@ Date: 2026-04-23
 - `setPage(1)` and `setPage(totalPages)` trigger refetch with the new page value.
 - Boundary booleans guard invalid navigation UI states.
 
+## Step 7.1 - Users + Acquisition Tracking Backend Module
+
+Date: 2026-04-23
+
+### What was implemented
+- Added new domain models:
+  - `User`
+  - `Acquisition`
+- Added full REST CRUD for users:
+  - `GET/POST /api/users`
+  - `GET/PATCH/DELETE /api/users/:id`
+- Added full REST CRUD for acquisition tracking:
+  - `GET/POST /api/acquisitions`
+  - `GET/PATCH/DELETE /api/acquisitions/:id`
+  - `GET /api/users/:id/acquisitions`
+- Added relation validation:
+  - acquisition create requires existing user + existing artwork
+  - supports artwork reference by numeric `objectId` or Mongo `_id`
+- Added data integrity guards:
+  - unique user email
+  - unique user+artwork acquisition pair
+  - prevent deleting users that still own acquisition records
+- Added status history tracking on acquisition status changes.
+
+### How to test
+1. Start backend:
+   - `cd backend`
+   - `npm run dev`
+2. Create user:
+   - `curl -i -X POST http://localhost:3001/api/users -H "Content-Type: application/json" -d "{\"displayName\":\"Curator A\",\"email\":\"curator.a@example.com\",\"role\":\"curator\"}"`
+3. Create acquisition:
+   - `curl -i -X POST http://localhost:3001/api/acquisitions -H "Content-Type: application/json" -d "{\"userId\":\"<USER_ID>\",\"artworkId\":2,\"status\":\"considering\",\"proposedPrice\":1000}"`
+4. List:
+   - `curl -i "http://localhost:3001/api/users?limit=5"`
+   - `curl -i "http://localhost:3001/api/acquisitions?limit=5"`
+   - `curl -i "http://localhost:3001/api/users/<USER_ID>/acquisitions?limit=5"`
+5. Update acquisition status:
+   - `curl -i -X PATCH http://localhost:3001/api/acquisitions/<ACQ_ID> -H "Content-Type: application/json" -d "{\"status\":\"approved\"}"`
+6. Negative tests:
+   - duplicate email -> `409`
+   - duplicate user/artwork acquisition -> `409`
+   - bad artwork/user refs -> `404`
+   - delete user with acquisitions -> `409`
+
+### Success criteria
+- User endpoints return correct CRUD behavior and validation errors.
+- Acquisition endpoints enforce relational integrity and track status history.
+- Conflict and not-found paths return typed JSON errors.
+
+### Theory: why it works
+- Users and acquisitions are separate collections linked by Mongo references.
+- Service-layer validation enforces schema + business rules before DB writes.
+- Status history appends change events when acquisition status transitions.
+- Referential checks ensure acquisition records cannot point to missing users/artworks.
+
+## Step 7.2 - Frontend Exposure for Users + Acquisitions
+
+Date: 2026-04-23
+
+### What was implemented
+- Extended the main frontend page with two new unpolished sections:
+  - `User Profiles (No Login)`
+  - `Acquisition Tracking`
+- Added user UI flows:
+  - create user
+  - list users
+  - delete user
+- Added acquisition UI flows:
+  - create acquisition (user + artwork reference)
+  - list acquisitions
+  - quick status updates (`approved`, `acquired`)
+  - delete acquisition
+- Kept all previous artwork CRUD and query UI intact.
+
+### How to test
+1. Start backend and frontend.
+2. In browser (`http://localhost:3000`):
+   - create a user in `User Profiles`
+   - create an acquisition for that user
+   - update acquisition status
+   - delete acquisition
+   - delete user after acquisition removal
+3. Verify error handling:
+   - try deleting user that still has acquisitions (should fail with error message).
+
+### Success criteria
+- User and acquisition actions complete from UI with visible feedback.
+- Backend relationship constraints surface readable messages in frontend.
+- Page still renders artwork controls and data as before.
+
+### Theory: why it works
+- Each section has local form/list state and calls corresponding REST endpoints.
+- After mutations, UI refetches affected datasets for consistency.
+- Backend remains source of truth for validation and constraints.
+
 ## Issues So Far + Fixes
 
 ### 1) Wrong repository/remote used initially

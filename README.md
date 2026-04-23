@@ -23,6 +23,19 @@ MoMA Acquisition Intelligence Platform for the EAD assignment.
 - `POST /api/artworks` (validated create endpoint)
 - `PATCH /api/artworks/:id` (validated partial update endpoint)
 - `DELETE /api/artworks/:id`
+- User profiles (no auth):
+  - `GET /api/users`
+  - `POST /api/users`
+  - `GET /api/users/:id`
+  - `PATCH /api/users/:id`
+  - `DELETE /api/users/:id`
+- Acquisition tracking:
+  - `GET /api/acquisitions`
+  - `POST /api/acquisitions`
+  - `GET /api/acquisitions/:id`
+  - `PATCH /api/acquisitions/:id`
+  - `DELETE /api/acquisitions/:id`
+  - `GET /api/users/:id/acquisitions`
 - Next.js frontend viewer:
   - list view
   - search
@@ -31,6 +44,8 @@ MoMA Acquisition Intelligence Platform for the EAD assignment.
   - quick create
   - inline edit
   - delete action
+  - user profile creation/list/delete section (no auth)
+  - acquisition creation/list/status update/delete section
   - backend about/health quick links
 
 ## Run Backend
@@ -63,6 +78,15 @@ Open in browser:
 curl http://localhost:3001/api/health
 curl "http://localhost:3001/api/artworks?page=1&limit=5&sortBy=title&order=asc"
 curl "http://localhost:3001/api/artworks?q=Wright&limit=3"
+```
+
+Example user/acquisition flow:
+
+```bash
+curl -X POST "http://localhost:3001/api/users" -H "Content-Type: application/json" -d "{\"displayName\":\"Test Curator\",\"email\":\"test.curator@example.com\",\"role\":\"curator\"}"
+curl "http://localhost:3001/api/users?limit=5"
+curl -X POST "http://localhost:3001/api/acquisitions" -H "Content-Type: application/json" -d "{\"userId\":\"<USER_ID>\",\"artworkId\":2,\"status\":\"considering\",\"proposedPrice\":1200}"
+curl "http://localhost:3001/api/users/<USER_ID>/acquisitions?limit=5"
 ```
 
 ## Rebuild MoMA Subset (Optional)

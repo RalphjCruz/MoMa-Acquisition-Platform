@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const PAGE_SIZE = 12;
+const ROLE_OPTIONS = ["curator", "manager", "admin"];
+const ACQUISITION_STATUS_OPTIONS = [
+  "considering",
+  "approved",
+  "acquired",
+  "rejected"
+];
 
 const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
@@ -31,12 +38,27 @@ const readErrorMessage = async (response) => {
   return `Request failed with status ${response.status}.`;
 };
 
-const emptyCreateForm = {
+const emptyCreateArtworkForm = {
   objectId: "",
   title: "",
   artistDisplayName: "",
   department: "",
   classification: ""
+};
+
+const emptyCreateUserForm = {
+  displayName: "",
+  email: "",
+  role: "curator"
+};
+
+const emptyCreateAcquisitionForm = {
+  userId: "",
+  artworkId: "",
+  status: "considering",
+  proposedPrice: "",
+  currency: "EUR",
+  notes: ""
 };
 
 export default function Page() {
@@ -58,7 +80,7 @@ export default function Page() {
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
 
-  const [createForm, setCreateForm] = useState(emptyCreateForm);
+  const [createForm, setCreateForm] = useState(emptyCreateArtworkForm);
   const [creating, setCreating] = useState(false);
 
   const [editingId, setEditingId] = useState("");
@@ -72,6 +94,25 @@ export default function Page() {
   });
   const [updatingId, setUpdatingId] = useState("");
   const [deletingId, setDeletingId] = useState("");
+
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState("");
+  const [userActionError, setUserActionError] = useState("");
+  const [userActionMessage, setUserActionMessage] = useState("");
+  const [userForm, setUserForm] = useState(emptyCreateUserForm);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState("");
+
+  const [acquisitions, setAcquisitions] = useState([]);
+  const [acquisitionsLoading, setAcquisitionsLoading] = useState(false);
+  const [acquisitionsError, setAcquisitionsError] = useState("");
+  const [acquisitionActionError, setAcquisitionActionError] = useState("");
+  const [acquisitionActionMessage, setAcquisitionActionMessage] = useState("");
+  const [acquisitionForm, setAcquisitionForm] = useState(emptyCreateAcquisitionForm);
+  const [creatingAcquisition, setCreatingAcquisition] = useState(false);
+  const [updatingAcquisitionId, setUpdatingAcquisitionId] = useState("");
+  const [deletingAcquisitionId, setDeletingAcquisitionId] = useState("");
 
   const isFirstPage = pagination.page <= 1;
   const isLastPage = pagination.page >= pagination.totalPages;
@@ -110,7 +151,6 @@ export default function Page() {
           totalPages: 1
         };
 
-        // Keep pagination in safe bounds if current page becomes invalid after deletes.
         if (nextPagination.totalPages < page) {
           setPage(nextPagination.totalPages);
           return;
@@ -122,7 +162,6 @@ export default function Page() {
         if (err.name === "AbortError") {
           return;
         }
-
         setError(
           "Failed to load artworks. Check backend is running and NEXT_PUBLIC_API_BASE_URL is correct."
         );
@@ -133,11 +172,69 @@ export default function Page() {
     [page, queryString]
   );
 
+  const fetchUsers = useCallback(async () => {
+    setUsersLoading(true);
+    setUsersError("");
+
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/api/users?limit=100&sortBy=createdAt&order=desc`
+      );
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+
+      const payload = await response.json();
+      const nextUsers = payload.data ?? [];
+      setUsers(nextUsers);
+
+      setAcquisitionForm((prev) => {
+        if (prev.userId) {
+          return prev;
+        }
+        return {
+          ...prev,
+          userId: nextUsers[0]?._id ?? ""
+        };
+      });
+    } catch (err) {
+      setUsersError(err.message || "Failed to load users.");
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
+
+  const fetchAcquisitions = useCallback(async () => {
+    setAcquisitionsLoading(true);
+    setAcquisitionsError("");
+
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/api/acquisitions?limit=100&sortBy=createdAt&order=desc`
+      );
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+
+      const payload = await response.json();
+      setAcquisitions(payload.data ?? []);
+    } catch (err) {
+      setAcquisitionsError(err.message || "Failed to load acquisitions.");
+    } finally {
+      setAcquisitionsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
     fetchArtworks(controller.signal);
     return () => controller.abort();
   }, [fetchArtworks]);
+
+  useEffect(() => {
+    fetchUsers();
+    fetchAcquisitions();
+  }, [fetchUsers, fetchAcquisitions]);
 
   const handleSearch = (event) => {
     event.preventDefault();
@@ -179,7 +276,7 @@ export default function Page() {
         throw new Error(await readErrorMessage(response));
       }
 
-      setCreateForm(emptyCreateForm);
+      setCreateForm(emptyCreateArtworkForm);
       setActionMessage("Artwork created.");
       setPage(1);
       await fetchArtworks();
@@ -277,6 +374,179 @@ export default function Page() {
     }
   };
 
+  const createUser = async (event) => {
+    event.preventDefault();
+    setUserActionError("");
+    setUserActionMessage("");
+    setCreatingUser(true);
+
+    try {
+      const payload = {
+        displayName: userForm.displayName.trim(),
+        email: userForm.email.trim(),
+        role: userForm.role
+      };
+
+      const response = await fetch(`${apiBaseUrl}/api/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+
+      setUserForm(emptyCreateUserForm);
+      setUserActionMessage("User created.");
+      await fetchUsers();
+    } catch (err) {
+      setUserActionError(err.message || "Failed to create user.");
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
+  const removeUser = async (user) => {
+    const confirmed = window.confirm(`Delete user "${user.displayName}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setUserActionError("");
+    setUserActionMessage("");
+    setDeletingUserId(user._id);
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/users/${user._id}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+
+      setUserActionMessage("User deleted.");
+      await fetchUsers();
+      await fetchAcquisitions();
+    } catch (err) {
+      setUserActionError(err.message || "Failed to delete user.");
+    } finally {
+      setDeletingUserId("");
+    }
+  };
+
+  const handleAcquisitionFormChange = (field, value) => {
+    setAcquisitionForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const createAcquisition = async (event) => {
+    event.preventDefault();
+    setAcquisitionActionError("");
+    setAcquisitionActionMessage("");
+    setCreatingAcquisition(true);
+
+    try {
+      const artworkId = Number.parseInt(acquisitionForm.artworkId, 10);
+      if (!Number.isInteger(artworkId) || artworkId <= 0) {
+        throw new Error("artworkId must be a positive numeric objectId.");
+      }
+
+      if (!acquisitionForm.userId) {
+        throw new Error("Please select a user.");
+      }
+
+      const payload = {
+        userId: acquisitionForm.userId,
+        artworkId,
+        status: acquisitionForm.status,
+        currency: acquisitionForm.currency.trim() || "EUR",
+        notes: acquisitionForm.notes.trim()
+      };
+
+      if (acquisitionForm.proposedPrice.trim() !== "") {
+        payload.proposedPrice = Number(acquisitionForm.proposedPrice);
+      }
+
+      const response = await fetch(`${apiBaseUrl}/api/acquisitions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+
+      setAcquisitionForm((prev) => ({
+        ...emptyCreateAcquisitionForm,
+        userId: prev.userId,
+        currency: "EUR"
+      }));
+      setAcquisitionActionMessage("Acquisition created.");
+      await fetchAcquisitions();
+    } catch (err) {
+      setAcquisitionActionError(err.message || "Failed to create acquisition.");
+    } finally {
+      setCreatingAcquisition(false);
+    }
+  };
+
+  const updateAcquisitionStatus = async (acquisition, nextStatus) => {
+    setAcquisitionActionError("");
+    setAcquisitionActionMessage("");
+    setUpdatingAcquisitionId(acquisition._id);
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/acquisitions/${acquisition._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus })
+      });
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+
+      setAcquisitionActionMessage(`Acquisition status updated to ${nextStatus}.`);
+      await fetchAcquisitions();
+    } catch (err) {
+      setAcquisitionActionError(err.message || "Failed to update acquisition.");
+    } finally {
+      setUpdatingAcquisitionId("");
+    }
+  };
+
+  const removeAcquisition = async (acquisition) => {
+    const confirmed = window.confirm(
+      `Delete acquisition for "${acquisition.artworkId?.title ?? "artwork"}"?`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setAcquisitionActionError("");
+    setAcquisitionActionMessage("");
+    setDeletingAcquisitionId(acquisition._id);
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/acquisitions/${acquisition._id}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+
+      setAcquisitionActionMessage("Acquisition deleted.");
+      await fetchAcquisitions();
+    } catch (err) {
+      setAcquisitionActionError(err.message || "Failed to delete acquisition.");
+    } finally {
+      setDeletingAcquisitionId("");
+    }
+  };
+
   return (
     <main className="page">
       <header className="hero">
@@ -342,7 +612,7 @@ export default function Page() {
       </section>
 
       <section className="createPanel">
-        <h2>Quick Create</h2>
+        <h2>Quick Create Artwork</h2>
         <form className="createForm" onSubmit={handleCreate}>
           <input
             type="number"
@@ -553,6 +823,198 @@ export default function Page() {
           Last
         </button>
       </section>
+
+      <section className="modulePanel">
+        <h2>User Profiles (No Login)</h2>
+        <form className="moduleForm" onSubmit={createUser}>
+          <input
+            type="text"
+            placeholder="displayName"
+            value={userForm.displayName}
+            onChange={(event) =>
+              setUserForm((prev) => ({ ...prev, displayName: event.target.value }))
+            }
+          />
+          <input
+            type="email"
+            placeholder="email"
+            value={userForm.email}
+            onChange={(event) =>
+              setUserForm((prev) => ({ ...prev, email: event.target.value }))
+            }
+          />
+          <select
+            value={userForm.role}
+            onChange={(event) =>
+              setUserForm((prev) => ({ ...prev, role: event.target.value }))
+            }
+          >
+            {ROLE_OPTIONS.map((role) => (
+              <option key={role} value={role}>
+                {role}
+              </option>
+            ))}
+          </select>
+          <button type="submit" disabled={creatingUser}>
+            {creatingUser ? "Creating..." : "Create User"}
+          </button>
+        </form>
+        {usersLoading && <p>Loading users...</p>}
+        {!usersLoading && usersError && <p className="error">{usersError}</p>}
+        {!usersLoading && userActionError && <p className="error">{userActionError}</p>}
+        {!usersLoading && !userActionError && userActionMessage && (
+          <p className="ok">{userActionMessage}</p>
+        )}
+
+        <div className="moduleList">
+          {users.map((user) => (
+            <article key={user._id} className="miniCard">
+              <p>
+                <strong>{user.displayName}</strong> ({user.role})
+              </p>
+              <p>{user.email}</p>
+              <button
+                type="button"
+                className="danger"
+                disabled={deletingUserId === user._id}
+                onClick={() => removeUser(user)}
+              >
+                {deletingUserId === user._id ? "Deleting..." : "Delete User"}
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="modulePanel">
+        <h2>Acquisition Tracking</h2>
+        <form className="moduleForm" onSubmit={createAcquisition}>
+          <select
+            value={acquisitionForm.userId}
+            onChange={(event) =>
+              handleAcquisitionFormChange("userId", event.target.value)
+            }
+          >
+            <option value="">Select user</option>
+            {users.map((user) => (
+              <option key={user._id} value={user._id}>
+                {user.displayName} ({user.email})
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min="1"
+            placeholder="artworkId (numeric ObjectID)"
+            value={acquisitionForm.artworkId}
+            onChange={(event) =>
+              handleAcquisitionFormChange("artworkId", event.target.value)
+            }
+          />
+          <select
+            value={acquisitionForm.status}
+            onChange={(event) =>
+              handleAcquisitionFormChange("status", event.target.value)
+            }
+          >
+            {ACQUISITION_STATUS_OPTIONS.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="proposedPrice"
+            value={acquisitionForm.proposedPrice}
+            onChange={(event) =>
+              handleAcquisitionFormChange("proposedPrice", event.target.value)
+            }
+          />
+          <input
+            type="text"
+            placeholder="currency"
+            value={acquisitionForm.currency}
+            onChange={(event) =>
+              handleAcquisitionFormChange("currency", event.target.value)
+            }
+          />
+          <input
+            type="text"
+            placeholder="notes"
+            value={acquisitionForm.notes}
+            onChange={(event) =>
+              handleAcquisitionFormChange("notes", event.target.value)
+            }
+          />
+          <button type="submit" disabled={creatingAcquisition}>
+            {creatingAcquisition ? "Creating..." : "Create Acquisition"}
+          </button>
+        </form>
+        {acquisitionsLoading && <p>Loading acquisitions...</p>}
+        {!acquisitionsLoading && acquisitionsError && (
+          <p className="error">{acquisitionsError}</p>
+        )}
+        {!acquisitionsLoading && acquisitionActionError && (
+          <p className="error">{acquisitionActionError}</p>
+        )}
+        {!acquisitionsLoading && !acquisitionActionError && acquisitionActionMessage && (
+          <p className="ok">{acquisitionActionMessage}</p>
+        )}
+
+        <div className="moduleList">
+          {acquisitions.map((acquisition) => (
+            <article key={acquisition._id} className="miniCard">
+              <p>
+                <strong>Status:</strong> {acquisition.status}
+              </p>
+              <p>
+                <strong>User:</strong>{" "}
+                {acquisition.userId?.displayName ?? acquisition.userId}
+              </p>
+              <p>
+                <strong>Artwork:</strong>{" "}
+                {acquisition.artworkId?.title ?? acquisition.artworkId} (
+                {acquisition.artworkId?.objectId ?? "n/a"})
+              </p>
+              <p>
+                <strong>Proposed:</strong>{" "}
+                {acquisition.proposedPrice ?? "n/a"} {acquisition.currency ?? ""}
+              </p>
+              <div className="cardActions">
+                <button
+                  type="button"
+                  disabled={updatingAcquisitionId === acquisition._id}
+                  onClick={() => updateAcquisitionStatus(acquisition, "approved")}
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  className="ghost"
+                  disabled={updatingAcquisitionId === acquisition._id}
+                  onClick={() => updateAcquisitionStatus(acquisition, "acquired")}
+                >
+                  Mark Acquired
+                </button>
+                <button
+                  type="button"
+                  className="danger"
+                  disabled={deletingAcquisitionId === acquisition._id}
+                  onClick={() => removeAcquisition(acquisition)}
+                >
+                  {deletingAcquisitionId === acquisition._id
+                    ? "Deleting..."
+                    : "Delete"}
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
     </main>
   );
 }
+

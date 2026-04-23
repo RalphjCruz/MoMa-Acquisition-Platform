@@ -243,6 +243,60 @@ h1 {
   padding: 14px;
 }
 
+.modulePanel {
+  margin-top: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #dbe1ee;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.modulePanel h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+.moduleForm {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.moduleForm input,
+.moduleForm select,
+.moduleForm button {
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid #cdd5e1;
+  font-size: 14px;
+  padding: 0 10px;
+}
+
+.moduleForm button {
+  border: 0;
+  background: #0f172a;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.moduleList {
+  display: grid;
+  gap: 8px;
+}
+
+.miniCard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.miniCard p {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
 .pagination {
   margin-top: 16px;
   display: flex;
@@ -281,6 +335,10 @@ h1 {
   }
 
   .createForm {
+    grid-template-columns: 1fr;
+  }
+
+  .moduleForm {
     grid-template-columns: 1fr;
   }
 }

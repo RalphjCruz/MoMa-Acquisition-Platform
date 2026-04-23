@@ -34,6 +34,8 @@ Open:
 - Quick create form (POST)
 - Inline edit mode (PATCH)
 - Delete action (DELETE)
+- User profile panel (create/list/delete)
+- Acquisition tracking panel (create/list/status update/delete)
 - Quick links to backend:
   - `/api/health`
   - `/about`
