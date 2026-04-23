@@ -36,3 +36,45 @@ Date: 2026-04-23
 
 ### Next step planned
 - Step 2: Backend foundation (`Express` scaffold + `GET /api/health` + backend-served `GET /about`).
+
+## Step 2 - Backend Foundation (Express + Health + About)
+
+Date: 2026-04-23
+
+### What was implemented
+- Created backend project structure under `backend/`.
+- Added Express server bootstrap with middleware stack (`helmet`, `cors`, `morgan`, JSON parser).
+- Added route architecture:
+  - `GET /` API info
+  - `GET /api/health` health check
+  - `GET /about` backend-served HTML page (assignment requirement)
+- Added global `404` handler and centralized error handler.
+- Added starter project hygiene files:
+  - root `.gitignore`
+  - `backend/.env.example`
+  - `frontend/README.md` placeholder
+- Updated root `README.md` with backend run instructions.
+
+### Why this matters
+- Satisfies the server foundation requirement with clean architecture (not a single messy file).
+- Implements one mandatory deliverable early: backend-served `About this page`.
+- Gives us a testable base for adding MongoDB + CRUD in next steps.
+
+### Dumbified explanation
+- We built the engine room of the app (the backend).
+- We added a quick "is server alive?" endpoint: `/api/health`.
+- We added the required "About this page" from the backend at `/about`.
+- So now the app has a real server base we can safely build on.
+
+### Commands executed
+- `npm install` (inside `backend`)
+- temporary run + endpoint checks via PowerShell:
+  - `http://localhost:3001/api/health`
+  - `http://localhost:3001/about`
+
+### Validation
+- `/api/health` returned HTTP `200` with JSON status payload.
+- `/about` returned HTTP `200` and contained `About This Page`.
+
+### Next step planned
+- Step 3: MongoDB connection + Artwork model + subset import script + first `GET /api/artworks`.

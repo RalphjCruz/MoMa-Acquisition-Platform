@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>About This Page - MoMA Acquisition Intelligence Platform</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(160deg, #eef3ff, #f8f9fc);
+        color: #1f2937;
+      }
+      main {
+        max-width: 900px;
+        margin: 40px auto;
+        padding: 24px;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(31, 41, 55, 0.08);
+      }
+      h1,
+      h2 {
+        margin-top: 0;
+      }
+      section {
+        margin-bottom: 20px;
+      }
+      .diagram {
+        padding: 14px;
+        border-radius: 10px;
+        background: #f3f6ff;
+        border: 1px solid #dbe4ff;
+        font-family: "Courier New", Courier, monospace;
+        white-space: pre-line;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>About This Page</h1>
+      <section>
+        <h2>How the Application Works</h2>
+        <p>
+          The frontend sends HTTP requests to the Node.js/Express backend. The backend exposes REST endpoints, validates
+          requests, applies business logic, and returns JSON responses.
+        </p>
+        <div class="diagram">
+          Browser (Next.js UI)
+              |
+              | HTTP/JSON
+              v
+          Express API (routes/controllers/services)
+              |
+              | Mongoose queries
+              v
+          MongoDB
+        </div>
+      </section>
+      <section>
+        <h2>Technologies Used</h2>
+        <p>Node.js, Express, JavaScript, Helmet, CORS, Morgan, and MongoDB (planned in next steps).</p>
+      </section>
+      <section>
+        <h2>Main Limitations Right Now</h2>
+        <p>This step only implements backend startup, health check, and this about page.</p>
+      </section>
+      <section>
+        <h2>Alternative Approaches</h2>
+        <p>
+          We could have used Next.js API routes only. We chose Express to keep REST backend structure explicit and easier
+          to defend in architecture discussions.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
+
