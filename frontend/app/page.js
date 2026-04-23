@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const PAGE_SIZE = 12;
 
@@ -16,6 +16,27 @@ const buildQueryString = (params) => {
     query.set(key, String(value));
   });
   return query.toString();
+};
+
+const readErrorMessage = async (response) => {
+  try {
+    const payload = await response.json();
+    if (payload?.error?.message) {
+      return payload.error.message;
+    }
+  } catch (_error) {
+    // ignore parse errors and fallback below
+  }
+
+  return `Request failed with status ${response.status}.`;
+};
+
+const emptyCreateForm = {
+  objectId: "",
+  title: "",
+  artistDisplayName: "",
+  department: "",
+  classification: ""
 };
 
 export default function Page() {
@@ -34,6 +55,26 @@ export default function Page() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
+
+  const [createForm, setCreateForm] = useState(emptyCreateForm);
+  const [creating, setCreating] = useState(false);
+
+  const [editingId, setEditingId] = useState("");
+  const [editForm, setEditForm] = useState({
+    title: "",
+    artistDisplayName: "",
+    department: "",
+    classification: "",
+    isPublicDomain: false,
+    tags: ""
+  });
+  const [updatingId, setUpdatingId] = useState("");
+  const [deletingId, setDeletingId] = useState("");
+
+  const isFirstPage = pagination.page <= 1;
+  const isLastPage = pagination.page >= pagination.totalPages;
 
   const queryString = useMemo(
     () =>
@@ -47,16 +88,14 @@ export default function Page() {
     [search, page, sortBy, order]
   );
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const loadArtworks = async () => {
+  const fetchArtworks = useCallback(
+    async (signal) => {
       setLoading(true);
       setError("");
 
       try {
         const response = await fetch(`${apiBaseUrl}/api/artworks?${queryString}`, {
-          signal: controller.signal
+          signal
         });
 
         if (!response.ok) {
@@ -64,15 +103,21 @@ export default function Page() {
         }
 
         const payload = await response.json();
+        const nextPagination = payload.pagination ?? {
+          page: 1,
+          limit: PAGE_SIZE,
+          totalItems: 0,
+          totalPages: 1
+        };
+
+        // Keep pagination in safe bounds if current page becomes invalid after deletes.
+        if (nextPagination.totalPages < page) {
+          setPage(nextPagination.totalPages);
+          return;
+        }
+
         setItems(payload.data ?? []);
-        setPagination(
-          payload.pagination ?? {
-            page: 1,
-            limit: PAGE_SIZE,
-            totalItems: 0,
-            totalPages: 1
-          }
-        );
+        setPagination(nextPagination);
       } catch (err) {
         if (err.name === "AbortError") {
           return;
@@ -84,16 +129,152 @@ export default function Page() {
       } finally {
         setLoading(false);
       }
-    };
+    },
+    [page, queryString]
+  );
 
-    loadArtworks();
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchArtworks(controller.signal);
     return () => controller.abort();
-  }, [queryString]);
+  }, [fetchArtworks]);
 
   const handleSearch = (event) => {
     event.preventDefault();
     setPage(1);
     setSearch(draftSearch.trim());
+  };
+
+  const handleCreateChange = (field, value) => {
+    setCreateForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleCreate = async (event) => {
+    event.preventDefault();
+    setActionError("");
+    setActionMessage("");
+    setCreating(true);
+
+    try {
+      const parsedObjectId = Number.parseInt(createForm.objectId, 10);
+      if (!Number.isInteger(parsedObjectId) || parsedObjectId <= 0) {
+        throw new Error("objectId must be a positive integer.");
+      }
+
+      const payload = {
+        objectId: parsedObjectId,
+        title: createForm.title.trim(),
+        artistDisplayName: createForm.artistDisplayName.trim(),
+        department: createForm.department.trim(),
+        classification: createForm.classification.trim()
+      };
+
+      const response = await fetch(`${apiBaseUrl}/api/artworks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+
+      setCreateForm(emptyCreateForm);
+      setActionMessage("Artwork created.");
+      setPage(1);
+      await fetchArtworks();
+    } catch (err) {
+      setActionError(err.message || "Failed to create artwork.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const startEdit = (item) => {
+    setActionError("");
+    setActionMessage("");
+    setEditingId(item._id);
+    setEditForm({
+      title: item.title || "",
+      artistDisplayName: item.artistDisplayName || "",
+      department: item.department || "",
+      classification: item.classification || "",
+      isPublicDomain: Boolean(item.isPublicDomain),
+      tags: Array.isArray(item.tags) ? item.tags.join(", ") : ""
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId("");
+    setUpdatingId("");
+  };
+
+  const saveEdit = async (item) => {
+    setActionError("");
+    setActionMessage("");
+    setUpdatingId(item._id);
+
+    try {
+      const payload = {
+        title: editForm.title.trim(),
+        artistDisplayName: editForm.artistDisplayName.trim(),
+        department: editForm.department.trim(),
+        classification: editForm.classification.trim(),
+        isPublicDomain: Boolean(editForm.isPublicDomain),
+        tags: editForm.tags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+      };
+
+      const response = await fetch(`${apiBaseUrl}/api/artworks/${item.objectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+
+      setEditingId("");
+      setActionMessage("Artwork updated.");
+      await fetchArtworks();
+    } catch (err) {
+      setActionError(err.message || "Failed to update artwork.");
+    } finally {
+      setUpdatingId("");
+    }
+  };
+
+  const removeArtwork = async (item) => {
+    const confirmed = window.confirm(
+      `Delete "${item.title}" (objectId ${item.objectId})?`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setActionError("");
+    setActionMessage("");
+    setDeletingId(item._id);
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/artworks/${item.objectId}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+
+      setActionMessage("Artwork deleted.");
+      await fetchArtworks();
+    } catch (err) {
+      setActionError(err.message || "Failed to delete artwork.");
+    } finally {
+      setDeletingId("");
+    }
   };
 
   return (
@@ -160,12 +341,61 @@ export default function Page() {
         </div>
       </section>
 
+      <section className="createPanel">
+        <h2>Quick Create</h2>
+        <form className="createForm" onSubmit={handleCreate}>
+          <input
+            type="number"
+            min="1"
+            placeholder="objectId (required)"
+            value={createForm.objectId}
+            onChange={(event) => handleCreateChange("objectId", event.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="title (required)"
+            value={createForm.title}
+            onChange={(event) => handleCreateChange("title", event.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="artist"
+            value={createForm.artistDisplayName}
+            onChange={(event) =>
+              handleCreateChange("artistDisplayName", event.target.value)
+            }
+          />
+          <input
+            type="text"
+            placeholder="department"
+            value={createForm.department}
+            onChange={(event) => handleCreateChange("department", event.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="classification"
+            value={createForm.classification}
+            onChange={(event) =>
+              handleCreateChange("classification", event.target.value)
+            }
+          />
+          <button type="submit" disabled={creating}>
+            {creating ? "Creating..." : "Create"}
+          </button>
+        </form>
+      </section>
+
       <section className="status">
         {loading && <p>Loading artworks...</p>}
         {!loading && error && <p className="error">{error}</p>}
+        {!loading && actionError && <p className="error">{actionError}</p>}
+        {!loading && !actionError && actionMessage && (
+          <p className="ok">{actionMessage}</p>
+        )}
         {!loading && !error && (
           <p>
-            Showing page {pagination.page} of {pagination.totalPages} ({pagination.totalItems} total artworks)
+            Showing page {pagination.page} of {pagination.totalPages} (
+            {pagination.totalItems} total artworks)
           </p>
         )}
       </section>
@@ -173,19 +403,113 @@ export default function Page() {
       <section className="grid">
         {items.map((item) => (
           <article key={item._id} className="card">
-            <h2>{item.title || "Untitled"}</h2>
-            <p>
-              <strong>Artist:</strong> {item.artistDisplayName || "Unknown Artist"}
-            </p>
-            <p>
-              <strong>Department:</strong> {item.department || "Unknown"}
-            </p>
-            <p>
-              <strong>Classification:</strong> {item.classification || "Unknown"}
-            </p>
-            <p>
-              <strong>Object ID:</strong> {item.objectId}
-            </p>
+            {editingId === item._id ? (
+              <div className="editForm">
+                <input
+                  type="text"
+                  value={editForm.title}
+                  placeholder="Title"
+                  onChange={(event) =>
+                    setEditForm((prev) => ({ ...prev, title: event.target.value }))
+                  }
+                />
+                <input
+                  type="text"
+                  value={editForm.artistDisplayName}
+                  placeholder="Artist"
+                  onChange={(event) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      artistDisplayName: event.target.value
+                    }))
+                  }
+                />
+                <input
+                  type="text"
+                  value={editForm.department}
+                  placeholder="Department"
+                  onChange={(event) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      department: event.target.value
+                    }))
+                  }
+                />
+                <input
+                  type="text"
+                  value={editForm.classification}
+                  placeholder="Classification"
+                  onChange={(event) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      classification: event.target.value
+                    }))
+                  }
+                />
+                <input
+                  type="text"
+                  value={editForm.tags}
+                  placeholder="Tags (comma separated)"
+                  onChange={(event) =>
+                    setEditForm((prev) => ({ ...prev, tags: event.target.value }))
+                  }
+                />
+                <label className="checkboxLabel">
+                  <input
+                    type="checkbox"
+                    checked={editForm.isPublicDomain}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        isPublicDomain: event.target.checked
+                      }))
+                    }
+                  />
+                  Public Domain
+                </label>
+                <div className="cardActions">
+                  <button
+                    type="button"
+                    disabled={updatingId === item._id}
+                    onClick={() => saveEdit(item)}
+                  >
+                    {updatingId === item._id ? "Saving..." : "Save"}
+                  </button>
+                  <button type="button" className="ghost" onClick={cancelEdit}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h2>{item.title || "Untitled"}</h2>
+                <p>
+                  <strong>Artist:</strong> {item.artistDisplayName || "Unknown Artist"}
+                </p>
+                <p>
+                  <strong>Department:</strong> {item.department || "Unknown"}
+                </p>
+                <p>
+                  <strong>Classification:</strong> {item.classification || "Unknown"}
+                </p>
+                <p>
+                  <strong>Object ID:</strong> {item.objectId}
+                </p>
+                <div className="cardActions">
+                  <button type="button" onClick={() => startEdit(item)}>
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="danger"
+                    disabled={deletingId === item._id}
+                    onClick={() => removeArtwork(item)}
+                  >
+                    {deletingId === item._id ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
+              </>
+            )}
           </article>
         ))}
       </section>
@@ -199,7 +523,14 @@ export default function Page() {
       <section className="pagination">
         <button
           type="button"
-          disabled={pagination.page <= 1 || loading}
+          disabled={isFirstPage || loading}
+          onClick={() => setPage(1)}
+        >
+          First
+        </button>
+        <button
+          type="button"
+          disabled={isFirstPage || loading}
           onClick={() => setPage((prev) => Math.max(1, prev - 1))}
         >
           Previous
@@ -209,13 +540,19 @@ export default function Page() {
         </span>
         <button
           type="button"
-          disabled={pagination.page >= pagination.totalPages || loading}
+          disabled={isLastPage || loading}
           onClick={() => setPage((prev) => Math.min(pagination.totalPages, prev + 1))}
         >
           Next
+        </button>
+        <button
+          type="button"
+          disabled={isLastPage || loading}
+          onClick={() => setPage(pagination.totalPages)}
+        >
+          Last
         </button>
       </section>
     </main>
   );
 }
-

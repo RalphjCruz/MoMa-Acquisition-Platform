@@ -28,6 +28,9 @@ MoMA Acquisition Intelligence Platform for the EAD assignment.
   - search
   - sorting
   - pagination
+  - quick create
+  - inline edit
+  - delete action
   - backend about/health quick links
 
 ## Run Backend

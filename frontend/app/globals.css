@@ -124,6 +124,48 @@ h1 {
   color: #b91c1c;
 }
 
+.ok {
+  color: #166534;
+}
+
+.createPanel {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #dbe1ee;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.createPanel h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+.createForm {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.createForm input,
+.createForm button,
+.editForm input,
+.editForm button {
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid #cdd5e1;
+  font-size: 14px;
+  padding: 0 10px;
+}
+
+.createForm button,
+.editForm button {
+  border: 0;
+  background: #0f172a;
+  color: #ffffff;
+  cursor: pointer;
+}
+
 .grid {
   display: grid;
   gap: 14px;
@@ -148,6 +190,49 @@ h1 {
   margin: 0 0 6px;
   color: #374151;
   font-size: 14px;
+}
+
+.editForm {
+  display: grid;
+  gap: 8px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.checkboxLabel input {
+  width: 16px;
+  height: 16px;
+}
+
+.cardActions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cardActions button {
+  border: 0;
+  border-radius: 8px;
+  height: 34px;
+  padding: 0 12px;
+  cursor: pointer;
+  background: #1e293b;
+  color: #ffffff;
+}
+
+.cardActions .danger {
+  background: #b91c1c;
+}
+
+.cardActions .ghost {
+  background: #64748b;
 }
 
 .empty {
@@ -194,5 +279,8 @@ h1 {
     min-width: 0;
     width: 100%;
   }
-}
 
+  .createForm {
+    grid-template-columns: 1fr;
+  }
+}

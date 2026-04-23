@@ -284,6 +284,73 @@ Date: 2026-04-23
 - If query finds a record, it is removed and returned.
 - If no record matches, typed not-found error is raised and returned consistently by middleware.
 
+## Step 6 - Frontend CRUD (Unpolished)
+
+Date: 2026-04-23
+
+### What was implemented
+- Extended frontend viewer page to support backend CRUD actions:
+  - create artwork (`POST /api/artworks`)
+  - edit artwork inline (`PATCH /api/artworks/:id`)
+  - delete artwork (`DELETE /api/artworks/:id`)
+- Kept existing read/search/sort/pagination flow intact.
+- Added action feedback messaging for success/failure states.
+- Added minimal rough styling for create/edit/delete controls.
+
+### How to test
+1. Backend terminal:
+   - `cd backend`
+   - `npm run dev`
+2. Frontend terminal:
+   - `cd frontend`
+   - `npm run dev`
+3. In browser (`http://localhost:3000`):
+   - create a new artwork in `Quick Create`
+   - edit any card using `Edit` -> `Save`
+   - delete a card with `Delete`
+   - use search/sort/pagination to verify list refreshes correctly
+
+### Success criteria
+- Create form adds a new record and shows success message.
+- Edit updates fields and persists when reloaded.
+- Delete removes the record and follow-up read/search confirms absence.
+- Errors (duplicate objectId, bad input) appear as readable messages.
+
+### Theory: why it works
+- React state controls form values and list query params.
+- UI actions send HTTP requests directly to REST endpoints.
+- Backend validation enforces data quality; frontend surfaces backend errors to user.
+- After each mutation, frontend re-fetches current list for consistency.
+
+## Step 6.1 - Pagination Jump Controls (First/Last)
+
+Date: 2026-04-23
+
+### What was implemented
+- Added `First` and `Last` buttons to frontend pagination controls.
+- Added page-boundary state helpers to disable controls safely:
+  - disable `First/Previous` on first page
+  - disable `Next/Last` on last page
+
+### How to test
+1. Run backend and frontend.
+2. Open `http://localhost:3000`.
+3. Click `Last` and verify page jumps to final page.
+4. Click `First` and verify page jumps to page 1.
+5. Confirm disabled states:
+   - on page 1: `First`, `Previous` disabled
+   - on final page: `Next`, `Last` disabled
+
+### Success criteria
+- Jump buttons move directly to first/last page.
+- No page-underflow/overflow happens.
+- Buttons disable correctly at boundaries.
+
+### Theory: why it works
+- Pagination state drives backend query (`page` param).
+- `setPage(1)` and `setPage(totalPages)` trigger refetch with the new page value.
+- Boundary booleans guard invalid navigation UI states.
+
 ## Issues So Far + Fixes
 
 ### 1) Wrong repository/remote used initially

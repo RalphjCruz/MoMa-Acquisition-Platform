@@ -31,6 +31,9 @@ Open:
 - Search (`q`)
 - Sort and order controls
 - Pagination
+- Quick create form (POST)
+- Inline edit mode (PATCH)
+- Delete action (DELETE)
 - Quick links to backend:
   - `/api/health`
   - `/about`
