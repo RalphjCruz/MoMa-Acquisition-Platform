@@ -2,6 +2,7 @@ const express = require("express");
 
 const healthRoutes = require("./health.routes");
 const aboutRoutes = require("./about.routes");
+const artworksRoutes = require("./artworks.routes");
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ router.get("/", (_req, res) => {
 });
 
 router.use("/api/health", healthRoutes);
+router.use("/api/artworks", artworksRoutes);
 router.use("/about", aboutRoutes);
 
 module.exports = router;
-
