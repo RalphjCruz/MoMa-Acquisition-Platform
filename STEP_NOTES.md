@@ -1,5 +1,32 @@
 # Step Notes (Public)
 
+## Step 3.1 - External MongoDB Verification
+
+Date: 2026-04-23
+
+### What was implemented
+- Verified local MongoDB server installation and runtime status for transition away from in-memory mode.
+
+### How to test
+- `Get-Service *mongo*`
+- `Test-NetConnection -ComputerName 127.0.0.1 -Port 27017`
+- `Get-CimInstance Win32_Service -Filter "Name='MongoDB'" | Select Name,State,StartMode,PathName`
+
+### Success criteria
+- MongoDB service exists and is `Running`.
+- TCP port `27017` is reachable on localhost.
+- Service path points to `mongod.exe`.
+
+### Theory: why it works
+- If `mongod` runs as a Windows service and listens on `27017`, applications using
+  `mongodb://127.0.0.1:27017` can establish driver connections and perform CRUD.
+- Command-line tools (`mongod`, `mongosh`) not being in PATH does not block app connectivity.
+
+### Validation result on this machine
+- Service: `MongoDB` is `Running` and `StartMode=Auto`.
+- Listening: `127.0.0.1:27017` reachable (`TcpTestSucceeded=True`).
+- Binary path: `"C:\Program Files\MongoDB\Server\8.2\bin\mongod.exe" --config ... --service`.
+
 ## Issues So Far + Fixes
 
 ### 1) Wrong repository/remote used initially
