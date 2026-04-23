@@ -28,6 +28,8 @@ npm install
 npm run dev
 ```
 
+Before running, create `backend/.env` from `backend/.env.example`.
+
 ## Test Backend Endpoints
 
 ```bash

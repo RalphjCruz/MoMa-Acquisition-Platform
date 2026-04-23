@@ -27,6 +27,49 @@ Date: 2026-04-23
 - Listening: `127.0.0.1:27017` reachable (`TcpTestSucceeded=True`).
 - Binary path: `"C:\Program Files\MongoDB\Server\8.2\bin\mongod.exe" --config ... --service`.
 
+## Step 3.2 - Switch Backend to External MongoDB Mode
+
+Date: 2026-04-23
+
+### What was implemented
+- Updated backend environment template for real MongoDB mode:
+  - `MONGODB_URI=mongodb://127.0.0.1:27017`
+  - `USE_IN_MEMORY_DB=false`
+- Created local `backend/.env` with external MongoDB configuration.
+- Restarted backend and verified API calls while running against external MongoDB.
+
+### How to test
+1. Create `backend/.env`:
+   - `PORT=3001`
+   - `NODE_ENV=development`
+   - `MONGODB_URI=mongodb://127.0.0.1:27017`
+   - `MONGODB_DB_NAME=moma_acquisition_platform`
+   - `USE_IN_MEMORY_DB=false`
+   - `AUTO_SEED_ON_START=true`
+2. Start backend:
+   - `cd backend`
+   - `npm run dev`
+3. Validate:
+   - `curl http://localhost:3001/api/health`
+   - `curl "http://localhost:3001/api/artworks?page=1&limit=3"`
+4. Check startup logs contain `MongoDB connected (external)`.
+
+### Success criteria
+- Backend starts and logs external DB connection mode.
+- Endpoints return HTTP `200`.
+- `api/artworks` returns seeded records with pagination.
+
+### Theory: why it works
+- `dotenv` loads `backend/.env` at process start.
+- With `USE_IN_MEMORY_DB=false`, database connector bypasses memory server and uses `MONGODB_URI`.
+- Mongoose creates a real TCP connection to local `mongod` (`127.0.0.1:27017`), so writes/reads persist between runs.
+
+### Validation result on this machine
+- Startup log: `MongoDB connected (external)`.
+- Startup log: `Seed skipped: Artwork collection already contains data.`
+- `GET /api/health` -> `200`
+- `GET /api/artworks?page=1&limit=3` -> `200`
+
 ## Issues So Far + Fixes
 
 ### 1) Wrong repository/remote used initially
@@ -76,6 +119,15 @@ Date: 2026-04-23
   - merged into one valid `scripts` object.
 - Prevention:
   - validate file after edits (`npm install` is a quick structure check).
+
+### 7) Port `3001` already in use during verification
+- Symptom: `EADDRINUSE: address already in use :::3001`.
+- Root cause: an old Node backend process was still running.
+- Fix:
+  - identified owner process via `Get-NetTCPConnection -LocalPort 3001`
+  - stopped old process and reran verification cleanly.
+- Prevention:
+  - always check active listener before launching duplicate local servers.
 
 ## Step 3 - MongoDB + First Artwork Read API
 
