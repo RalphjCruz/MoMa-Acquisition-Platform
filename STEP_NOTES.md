@@ -118,6 +118,89 @@ Date: 2026-04-23
 - Backend handles filtering/sorting/pagination; frontend only displays returned page.
 - API base URL is environment-driven, so deployment/machine changes do not require code edits.
 
+## Step 5.1 - Artwork Read-by-ID Endpoint
+
+Date: 2026-04-23
+
+### What was implemented
+- Added single-item artwork endpoint:
+  - `GET /api/artworks/:id`
+- Supports two identifier formats:
+  - Mongo document `_id`
+  - numeric MoMA `objectId`
+- Added validation and error mapping:
+  - invalid id format -> `400 VALIDATION_ERROR`
+  - missing record -> `404 ARTWORK_NOT_FOUND`
+  - found record -> `200` with `{ data: artwork }`
+
+### How to test
+1. Start backend:
+   - `cd backend`
+   - `npm run dev`
+2. Fetch one id:
+   - `curl "http://localhost:3001/api/artworks?page=1&limit=1"`
+3. Use returned `_id`:
+   - `curl "http://localhost:3001/api/artworks/<_id>"`
+4. Use returned `objectId`:
+   - `curl "http://localhost:3001/api/artworks/<objectId>"`
+5. Test error paths:
+   - `curl "http://localhost:3001/api/artworks/not-valid-id"`
+   - `curl "http://localhost:3001/api/artworks/999999999"`
+
+### Success criteria
+- Valid `_id` and `objectId` return `200` and a single artwork object.
+- Invalid id format returns `400` with `VALIDATION_ERROR`.
+- Unknown numeric id returns `404` with `ARTWORK_NOT_FOUND`.
+
+### Theory: why it works
+- Route forwards `:id` param to service layer.
+- Service detects id type:
+  - digits => query by `objectId`
+  - valid ObjectId => query by Mongo `_id`
+- Service throws typed errors for invalid/not-found cases.
+- Error middleware converts thrown errors into consistent JSON responses.
+
+## Step 5.2 - Artwork Create Endpoint
+
+Date: 2026-04-23
+
+### What was implemented
+- Added create endpoint:
+  - `POST /api/artworks`
+- Added payload validation for create:
+  - required: `objectId`, `title`
+  - optional normalized fields: `artistDisplayName`, `department`, `classification`, `medium`, `dateText`, `dateAcquired`, `creditLine`, `isPublicDomain`, `tags`
+  - unknown fields rejected with `400 VALIDATION_ERROR`
+- Added duplicate protection:
+  - existing `objectId` returns `409 DUPLICATE_OBJECT_ID`
+- Added malformed JSON handling in global error middleware:
+  - returns `400 VALIDATION_ERROR` with `Malformed JSON request body.`
+
+### How to test
+1. Start backend:
+   - `cd backend`
+   - `npm run dev`
+2. Create (success):
+   - `curl -i -X POST http://localhost:3001/api/artworks -H "Content-Type: application/json" -d "{\"objectId\":880001,\"title\":\"New API Artwork\",\"artistDisplayName\":\"Tester\"}"`
+3. Duplicate create (same objectId):
+   - rerun previous command
+4. Validation failure:
+   - `curl -i -X POST http://localhost:3001/api/artworks -H "Content-Type: application/json" -d "{\"title\":\"Missing objectId\"}"`
+5. Malformed JSON:
+   - `curl -i -X POST http://localhost:3001/api/artworks -H "Content-Type: application/json" -d "{bad-json"`
+
+### Success criteria
+- Valid payload returns `201` and created artwork in `{ data }`.
+- Duplicate `objectId` returns `409 DUPLICATE_OBJECT_ID`.
+- Missing required fields returns `400 VALIDATION_ERROR`.
+- Malformed JSON returns `400 VALIDATION_ERROR`.
+
+### Theory: why it works
+- Controller forwards request body to service.
+- Service validates/normalizes incoming fields before DB write.
+- Service checks uniqueness by `objectId` before create.
+- Centralized error middleware ensures predictable API error contracts.
+
 ## Issues So Far + Fixes
 
 ### 1) Wrong repository/remote used initially

@@ -19,6 +19,8 @@ MoMA Acquisition Intelligence Platform for the EAD assignment.
   - `order`
   - `page`
   - `limit`
+- `GET /api/artworks/:id` (supports Mongo `_id` or numeric `objectId`)
+- `POST /api/artworks` (validated create endpoint)
 - Next.js frontend viewer:
   - list view
   - search

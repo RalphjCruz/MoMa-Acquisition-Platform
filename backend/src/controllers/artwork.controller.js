@@ -9,7 +9,26 @@ const getArtworks = async (req, res, next) => {
   }
 };
 
-module.exports = {
-  getArtworks
+const getArtworkById = async (req, res, next) => {
+  try {
+    const artwork = await artworkService.getArtworkById(req.params.id);
+    res.status(200).json({ data: artwork });
+  } catch (error) {
+    next(error);
+  }
 };
 
+const createArtwork = async (req, res, next) => {
+  try {
+    const artwork = await artworkService.createArtwork(req.body);
+    res.status(201).json({ data: artwork });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getArtworks,
+  getArtworkById,
+  createArtwork
+};
