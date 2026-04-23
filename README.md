@@ -21,6 +21,8 @@ MoMA Acquisition Intelligence Platform for the EAD assignment.
   - `limit`
 - `GET /api/artworks/:id` (supports Mongo `_id` or numeric `objectId`)
 - `POST /api/artworks` (validated create endpoint)
+- `PATCH /api/artworks/:id` (validated partial update endpoint)
+- `DELETE /api/artworks/:id`
 - Next.js frontend viewer:
   - list view
   - search

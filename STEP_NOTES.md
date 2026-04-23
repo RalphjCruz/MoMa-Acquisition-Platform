@@ -201,6 +201,89 @@ Date: 2026-04-23
 - Service checks uniqueness by `objectId` before create.
 - Centralized error middleware ensures predictable API error contracts.
 
+## Step 5.3 - Artwork Update Endpoint
+
+Date: 2026-04-23
+
+### What was implemented
+- Added update endpoint:
+  - `PATCH /api/artworks/:id`
+- Supports id lookup by:
+  - Mongo `_id`
+  - numeric `objectId`
+- Added update validation rules:
+  - body must be non-empty JSON object
+  - unknown fields rejected
+  - `objectId` is immutable and cannot be updated
+  - typed validation for `title`, `dateAcquired`, `isPublicDomain`, `tags`
+- Returns:
+  - `200` on success with updated record
+  - `400` for invalid id/payload
+  - `404` when target record is missing
+
+### How to test
+1. Start backend:
+   - `cd backend`
+   - `npm run dev`
+2. Successful patch:
+   - `curl -i -X PATCH http://localhost:3001/api/artworks/810287 -H "Content-Type: application/json" -d "{\"title\":\"API Test Artwork Updated\",\"isPublicDomain\":true,\"tags\":[\"api\",\"updated\"]}"`
+3. Read-back:
+   - `curl -i http://localhost:3001/api/artworks/810287`
+4. Failure cases:
+   - immutable field: `{"objectId":123}`
+   - unknown field: `{"foo":"bar"}`
+   - missing record id
+   - invalid id format (`not-valid-id`)
+
+### Success criteria
+- Valid patch returns `200` with updated data.
+- Illegal/unknown fields return `400 VALIDATION_ERROR`.
+- Non-existing id returns `404 ARTWORK_NOT_FOUND`.
+
+### Theory: why it works
+- Service resolves flexible id query (objectId or _id), validates patch payload, then runs `findOneAndUpdate`.
+- Validation logic controls allowed fields and type safety before DB write.
+- Error middleware returns consistent response schema for all failure paths.
+
+## Step 5.4 - Artwork Delete Endpoint
+
+Date: 2026-04-23
+
+### What was implemented
+- Added delete endpoint:
+  - `DELETE /api/artworks/:id`
+- Supports id lookup by:
+  - Mongo `_id`
+  - numeric `objectId`
+- Returns:
+  - `200` with deleted record payload when found
+  - `404 ARTWORK_NOT_FOUND` when no record exists
+  - `400 VALIDATION_ERROR` for invalid id format
+
+### How to test
+1. Start backend:
+   - `cd backend`
+   - `npm run dev`
+2. Create temp artwork:
+   - `curl -i -X POST http://localhost:3001/api/artworks -H "Content-Type: application/json" -d "{\"objectId\":970001,\"title\":\"Delete Me\"}"`
+3. Delete it:
+   - `curl -i -X DELETE http://localhost:3001/api/artworks/970001`
+4. Verify it is gone:
+   - `curl -i http://localhost:3001/api/artworks/970001`
+5. Error checks:
+   - delete missing id
+   - delete with invalid id format
+
+### Success criteria
+- Existing id delete returns `200` and deleted record.
+- Re-fetch after delete returns `404`.
+- Invalid id delete returns `400`.
+
+### Theory: why it works
+- Service resolves id format into a Mongo query, then executes `findOneAndDelete`.
+- If query finds a record, it is removed and returned.
+- If no record matches, typed not-found error is raised and returned consistently by middleware.
+
 ## Issues So Far + Fixes
 
 ### 1) Wrong repository/remote used initially

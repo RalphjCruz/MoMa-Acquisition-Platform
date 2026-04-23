@@ -24,6 +24,19 @@ const CREATE_ALLOWED_FIELDS = new Set([
   "tags"
 ]);
 
+const UPDATE_ALLOWED_FIELDS = new Set([
+  "title",
+  "artistDisplayName",
+  "department",
+  "classification",
+  "medium",
+  "dateText",
+  "dateAcquired",
+  "creditLine",
+  "isPublicDomain",
+  "tags"
+]);
+
 const createServiceError = (statusCode, code, message) => {
   const error = new Error(message);
   error.statusCode = statusCode;
@@ -137,6 +150,28 @@ const parseOptionalTags = (value) => {
   return value.map((item) => normalizeText(item, "")).filter(Boolean);
 };
 
+const parseStrictBoolean = (value, fieldName) => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const lowered = value.toLowerCase().trim();
+    if (lowered === "true") {
+      return true;
+    }
+    if (lowered === "false") {
+      return false;
+    }
+  }
+
+  throw createServiceError(
+    400,
+    "VALIDATION_ERROR",
+    `${fieldName} must be a boolean value.`
+  );
+};
+
 const validateCreateArtworkPayload = (payload) => {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     throw createServiceError(
@@ -171,6 +206,111 @@ const validateCreateArtworkPayload = (payload) => {
     isPublicDomain: parseOptionalBoolean(payload.isPublicDomain, "isPublicDomain"),
     tags: parseOptionalTags(payload.tags)
   };
+};
+
+const validateUpdateArtworkPayload = (payload) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw createServiceError(
+      400,
+      "VALIDATION_ERROR",
+      "Request body must be a JSON object."
+    );
+  }
+
+  const keys = Object.keys(payload);
+  if (keys.length === 0) {
+    throw createServiceError(
+      400,
+      "VALIDATION_ERROR",
+      "At least one field is required for update."
+    );
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "objectId")) {
+    throw createServiceError(
+      400,
+      "VALIDATION_ERROR",
+      "objectId cannot be updated."
+    );
+  }
+
+  const unknownFields = keys.filter((field) => !UPDATE_ALLOWED_FIELDS.has(field));
+  if (unknownFields.length > 0) {
+    throw createServiceError(
+      400,
+      "VALIDATION_ERROR",
+      `Unknown field(s): ${unknownFields.join(", ")}.`
+    );
+  }
+
+  const updateData = {};
+
+  if (Object.prototype.hasOwnProperty.call(payload, "title")) {
+    updateData.title = parseRequiredTitle(payload.title);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "artistDisplayName")) {
+    updateData.artistDisplayName = normalizeText(payload.artistDisplayName, "Unknown Artist");
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "department")) {
+    updateData.department = normalizeText(payload.department, "Unknown");
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "classification")) {
+    updateData.classification = normalizeText(payload.classification, "Unknown");
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "medium")) {
+    updateData.medium = normalizeText(payload.medium, "");
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "dateText")) {
+    updateData.dateText = normalizeText(payload.dateText, "");
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "dateAcquired")) {
+    updateData.dateAcquired = parseOptionalDate(payload.dateAcquired);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "creditLine")) {
+    updateData.creditLine = normalizeText(payload.creditLine, "");
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "isPublicDomain")) {
+    updateData.isPublicDomain = parseStrictBoolean(
+      payload.isPublicDomain,
+      "isPublicDomain"
+    );
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "tags")) {
+    updateData.tags = parseOptionalTags(payload.tags);
+  }
+
+  return updateData;
+};
+
+const resolveArtworkIdQuery = (id) => {
+  const rawId = String(id ?? "").trim();
+
+  if (!rawId) {
+    throw createServiceError(400, "VALIDATION_ERROR", "Artwork id is required.");
+  }
+
+  if (/^\d+$/.test(rawId)) {
+    return { objectId: Number.parseInt(rawId, 10) };
+  }
+
+  if (mongoose.isValidObjectId(rawId)) {
+    return { _id: rawId };
+  }
+
+  throw createServiceError(
+    400,
+    "VALIDATION_ERROR",
+    "Artwork id must be a numeric ObjectID or a valid MongoDB _id."
+  );
 };
 
 const buildArtworkFilter = (query) => {
@@ -238,25 +378,7 @@ const listArtworks = async (query) => {
 };
 
 const getArtworkById = async (id) => {
-  const rawId = String(id ?? "").trim();
-
-  if (!rawId) {
-    throw createServiceError(400, "VALIDATION_ERROR", "Artwork id is required.");
-  }
-
-  let artwork = null;
-
-  if (/^\d+$/.test(rawId)) {
-    artwork = await Artwork.findOne({ objectId: Number.parseInt(rawId, 10) });
-  } else if (mongoose.isValidObjectId(rawId)) {
-    artwork = await Artwork.findById(rawId);
-  } else {
-    throw createServiceError(
-      400,
-      "VALIDATION_ERROR",
-      "Artwork id must be a numeric ObjectID or a valid MongoDB _id."
-    );
-  }
+  const artwork = await Artwork.findOne(resolveArtworkIdQuery(id));
 
   if (!artwork) {
     throw createServiceError(404, "ARTWORK_NOT_FOUND", "Artwork not found.");
@@ -293,8 +415,38 @@ const createArtwork = async (payload) => {
   }
 };
 
+const updateArtwork = async (id, payload) => {
+  const query = resolveArtworkIdQuery(id);
+  const updateData = validateUpdateArtworkPayload(payload);
+
+  const updated = await Artwork.findOneAndUpdate(
+    query,
+    { $set: updateData },
+    { new: true, runValidators: true }
+  );
+
+  if (!updated) {
+    throw createServiceError(404, "ARTWORK_NOT_FOUND", "Artwork not found.");
+  }
+
+  return updated;
+};
+
+const deleteArtwork = async (id) => {
+  const query = resolveArtworkIdQuery(id);
+  const deleted = await Artwork.findOneAndDelete(query);
+
+  if (!deleted) {
+    throw createServiceError(404, "ARTWORK_NOT_FOUND", "Artwork not found.");
+  }
+
+  return deleted;
+};
+
 module.exports = {
   listArtworks,
   getArtworkById,
-  createArtwork
+  createArtwork,
+  updateArtwork,
+  deleteArtwork
 };
