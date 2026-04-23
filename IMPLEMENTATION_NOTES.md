@@ -1,6 +1,7 @@
 # MoMA Acquisition Intelligence Platform - Implementation Notes
 
 This file is updated at the end of every implementation step.
+Each step must also include a `Dumbified explanation` section (plain-English summary).
 
 ## Step 1 - Repository Wiring and Workflow Policy
 
@@ -18,6 +19,11 @@ Date: 2026-04-23
 - Creates an auditable engineering log for demo defense and grading discussions.
 - Enforces disciplined delivery and traceability per assignment milestone.
 
+### Dumbified explanation
+- We fixed the project folder so it now talks to the correct GitHub repo.
+- We made a rule: after every coding step, we write what we did here and push it online.
+- This stops confusion and proves steady progress for grading and demo.
+
 ### Commands executed
 - `git remote set-url origin https://github.com/RalphjCruz/MoMa-Acquisition-Platform.git`
 - `git fetch origin`
@@ -30,4 +36,3 @@ Date: 2026-04-23
 
 ### Next step planned
 - Step 2: Backend foundation (`Express` scaffold + `GET /api/health` + backend-served `GET /about`).
-
