@@ -70,6 +70,54 @@ Date: 2026-04-23
 - `GET /api/health` -> `200`
 - `GET /api/artworks?page=1&limit=3` -> `200`
 
+## Step 4 - Simple Next.js Frontend Viewer
+
+Date: 2026-04-23
+
+### What was implemented
+- Added Next.js frontend app in `frontend/`.
+- Implemented simple read-only catalogue interface:
+  - list artworks from backend
+  - search (`q`)
+  - sort and order controls
+  - pagination (`page`, fixed page size)
+- Added quick links in UI to backend:
+  - `GET /api/health`
+  - backend `GET /about` page.
+- Added frontend env config:
+  - `.env.example` with `NEXT_PUBLIC_API_BASE_URL`.
+- Updated docs for cross-device setup and run instructions.
+
+### How to test
+1. Backend terminal:
+   - `cd backend`
+   - `npm run dev`
+2. Frontend terminal:
+   - `cd frontend`
+   - `npm install`
+   - copy `.env.example` to `.env.local`
+   - `npm run dev`
+3. Open:
+   - `http://localhost:3000`
+4. Verify:
+   - cards render from backend data
+   - search changes results
+   - sort/order changes ordering
+   - next/previous pagination works
+   - About/Health links open backend endpoints
+
+### Success criteria
+- Frontend starts without build/runtime errors.
+- Data loads from backend and updates with query controls.
+- UI is responsive on desktop/mobile widths.
+- Frontend still works on another machine by only changing env files.
+
+### Theory: why it works
+- Next.js renders a client page that requests data from Express API using `fetch`.
+- Query controls update component state, which rebuilds query string and triggers refetch.
+- Backend handles filtering/sorting/pagination; frontend only displays returned page.
+- API base URL is environment-driven, so deployment/machine changes do not require code edits.
+
 ## Issues So Far + Fixes
 
 ### 1) Wrong repository/remote used initially

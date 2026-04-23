@@ -1,0 +1,198 @@
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(155deg, #f8fbff 0%, #eef4ff 45%, #f6f7fb 100%);
+  color: #1f2937;
+}
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #1d4ed8;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(28px, 4.6vw, 42px);
+}
+
+.subtext {
+  margin-top: 8px;
+  color: #4b5563;
+}
+
+.heroLinks {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.heroLinks a {
+  text-decoration: none;
+  background: #111827;
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.controls form {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  min-width: 280px;
+}
+
+.controls input,
+.controls select,
+.controls button {
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+}
+
+.controls input {
+  flex: 1;
+  padding: 0 12px;
+}
+
+.controls button {
+  background: #2563eb;
+  color: #ffffff;
+  border: 0;
+  padding: 0 16px;
+  cursor: pointer;
+}
+
+.selects {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.selects label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.selects select {
+  padding: 0 10px;
+}
+
+.status {
+  margin: 10px 0 16px;
+  min-height: 26px;
+}
+
+.error {
+  color: #b91c1c;
+}
+
+.grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.06);
+}
+
+.card h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.card p {
+  margin: 0 0 6px;
+  color: #374151;
+  font-size: 14px;
+}
+
+.empty {
+  background: #ffffff;
+  border: 1px dashed #9ca3af;
+  border-radius: 12px;
+  margin-top: 12px;
+  padding: 14px;
+}
+
+.pagination {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.pagination button {
+  height: 40px;
+  border-radius: 10px;
+  border: 0;
+  background: #0f172a;
+  color: #ffffff;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 16px;
+  }
+
+  .hero {
+    flex-direction: column;
+  }
+
+  .controls form {
+    min-width: 0;
+    width: 100%;
+  }
+}
+

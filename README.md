@@ -19,6 +19,12 @@ MoMA Acquisition Intelligence Platform for the EAD assignment.
   - `order`
   - `page`
   - `limit`
+- Next.js frontend viewer:
+  - list view
+  - search
+  - sorting
+  - pagination
+  - backend about/health quick links
 
 ## Run Backend
 
@@ -29,6 +35,20 @@ npm run dev
 ```
 
 Before running, create `backend/.env` from `backend/.env.example`.
+
+## Run Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Before running frontend, create `frontend/.env.local` from `frontend/.env.example`.
+
+Open in browser:
+
+- `http://localhost:3000`
 
 ## Test Backend Endpoints
 
@@ -44,3 +64,13 @@ curl "http://localhost:3001/api/artworks?q=Wright&limit=3"
 cd backend
 npm run build:subset -- --limit=200
 ```
+
+## Cross-Laptop Compatibility Checklist
+
+- Install Node.js LTS (18.17+ recommended).
+- Install MongoDB Community Server and ensure service is running on `27017`.
+- Clone repo.
+- Create:
+  - `backend/.env` from `backend/.env.example`
+  - `frontend/.env.local` from `frontend/.env.example`
+- Run backend first, then frontend.
