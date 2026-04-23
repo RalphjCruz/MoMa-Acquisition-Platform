@@ -36,6 +36,7 @@ MoMA Acquisition Intelligence Platform for the EAD assignment.
   - `PATCH /api/acquisitions/:id`
   - `DELETE /api/acquisitions/:id`
   - `GET /api/users/:id/acquisitions`
+  - business rule: status can move to `acquired` only from `approved`
 - Next.js frontend viewer:
   - list view
   - search
@@ -83,7 +84,7 @@ curl "http://localhost:3001/api/artworks?q=Wright&limit=3"
 Example user/acquisition flow:
 
 ```bash
-curl -X POST "http://localhost:3001/api/users" -H "Content-Type: application/json" -d "{\"displayName\":\"Test Curator\",\"email\":\"test.curator@example.com\",\"role\":\"curator\"}"
+curl -X POST "http://localhost:3001/api/users" -H "Content-Type: application/json" -d "{\"displayName\":\"Test Buyer\",\"email\":\"test.buyer@example.com\",\"role\":\"buyer\"}"
 curl "http://localhost:3001/api/users?limit=5"
 curl -X POST "http://localhost:3001/api/acquisitions" -H "Content-Type: application/json" -d "{\"userId\":\"<USER_ID>\",\"artworkId\":2,\"status\":\"considering\",\"proposedPrice\":1200}"
 curl "http://localhost:3001/api/users/<USER_ID>/acquisitions?limit=5"

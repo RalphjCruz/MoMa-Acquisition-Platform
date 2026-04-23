@@ -11,7 +11,7 @@ const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const USER_ALLOWED_FIELDS = new Set(["displayName", "email", "role"]);
-const ROLE_VALUES = new Set(["curator", "manager", "admin"]);
+const ROLE_VALUES = new Set(["buyer", "manager", "admin"]);
 
 const createServiceError = (statusCode, code, message) => {
   const error = new Error(message);
@@ -60,7 +60,7 @@ const parseDisplayName = (value) => {
   return displayName;
 };
 
-const parseRole = (value, fallback = "curator") => {
+const parseRole = (value, fallback = "buyer") => {
   const role = normalizeText(value, fallback).toLowerCase();
   if (!ROLE_VALUES.has(role)) {
     throw createServiceError(
@@ -277,4 +277,3 @@ module.exports = {
   ensureValidUserId,
   createServiceError
 };
-

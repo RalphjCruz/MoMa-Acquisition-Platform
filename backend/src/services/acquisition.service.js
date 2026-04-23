@@ -341,6 +341,18 @@ const updateAcquisition = async (id, payload) => {
     Object.prototype.hasOwnProperty.call(updateData, "status") &&
     updateData.status !== acquisition.status;
 
+  if (
+    statusChanged &&
+    updateData.status === "acquired" &&
+    acquisition.status !== "approved"
+  ) {
+    throw createServiceError(
+      409,
+      "INVALID_STATUS_TRANSITION",
+      "Acquisition can only be marked as acquired when current status is approved."
+    );
+  }
+
   Object.assign(acquisition, updateData);
   if (statusChanged) {
     acquisition.statusHistory.push({
@@ -384,4 +396,3 @@ module.exports = {
   deleteAcquisition,
   listAcquisitionsByUser
 };
-

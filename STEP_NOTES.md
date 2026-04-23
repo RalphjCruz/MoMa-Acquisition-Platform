@@ -380,7 +380,7 @@ Date: 2026-04-23
    - `cd backend`
    - `npm run dev`
 2. Create user:
-   - `curl -i -X POST http://localhost:3001/api/users -H "Content-Type: application/json" -d "{\"displayName\":\"Curator A\",\"email\":\"curator.a@example.com\",\"role\":\"curator\"}"`
+   - `curl -i -X POST http://localhost:3001/api/users -H "Content-Type: application/json" -d "{\"displayName\":\"Buyer A\",\"email\":\"buyer.a@example.com\",\"role\":\"buyer\"}"`
 3. Create acquisition:
    - `curl -i -X POST http://localhost:3001/api/acquisitions -H "Content-Type: application/json" -d "{\"userId\":\"<USER_ID>\",\"artworkId\":2,\"status\":\"considering\",\"proposedPrice\":1000}"`
 4. List:
@@ -445,6 +445,66 @@ Date: 2026-04-23
 - Each section has local form/list state and calls corresponding REST endpoints.
 - After mutations, UI refetches affected datasets for consistency.
 - Backend remains source of truth for validation and constraints.
+
+## Step 7.3 - Enforce Approval Before Acquired Status
+
+Date: 2026-04-23
+
+### What was implemented
+- Added backend transition rule in acquisition update service:
+  - status cannot move directly to `acquired` unless current status is `approved`.
+- Added typed error for invalid transition:
+  - `409 INVALID_STATUS_TRANSITION`
+- Updated frontend acquisition controls:
+  - `Mark Acquired` button is disabled unless acquisition is currently `approved`
+  - button tooltip explains why disabled
+
+### How to test
+1. Create acquisition with status `considering`.
+2. Try patching status directly to `acquired`:
+   - expect `409 INVALID_STATUS_TRANSITION`
+3. Patch to `approved`, then patch to `acquired`:
+   - both should succeed
+4. In UI, confirm `Mark Acquired` is disabled before approval.
+
+### Success criteria
+- Direct transition `considering -> acquired` is blocked by API.
+- `approved -> acquired` works.
+- UI behavior mirrors backend rule.
+
+### Theory: why it works
+- Transition guard checks current status before applying patch update.
+- Backend enforces the business rule regardless of frontend behavior.
+- Frontend disable state prevents invalid action attempts proactively.
+
+## Step 7.4 - Apply `Moma.jpg` as Frontend Background
+
+Date: 2026-04-23
+
+### What was implemented
+- Moved `Moma.jpg` to Next.js static assets folder:
+  - `frontend/public/Moma.jpg`
+- Updated global styles to use image as page background:
+  - `body` now uses layered background (`image + light gradient overlay`)
+- Preserved readability by keeping translucent/light overlay above the image.
+
+### How to test
+1. Run frontend:
+   - `cd frontend`
+   - `npm run dev`
+2. Open `http://localhost:3000`
+3. Confirm the background image is visible behind app panels.
+4. Resize browser/mobile width to ensure layout remains readable.
+
+### Success criteria
+- Background image loads from `/Moma.jpg`.
+- No broken asset paths or CSS errors.
+- UI text and controls remain readable.
+
+### Theory: why it works
+- Files in `frontend/public` are served from root URL path by Next.js.
+- `url("/Moma.jpg")` resolves to that static asset.
+- Gradient overlay softens contrast so content remains legible.
 
 ## Issues So Far + Fixes
 
@@ -553,3 +613,348 @@ Date: 2026-04-23
 - Service layer builds MongoDB filter/sort/pagination options.
 - Mongoose executes queries against seeded artwork collection.
 - Controller returns normalized JSON response contract for frontend use.
+
+## Step 7.4 - Frontend Background Image (Moma.jpg)
+
+Date: 2026-04-23
+
+### What was implemented
+- Set the global frontend background to `Moma.jpg`.
+- Ensured image is served from Next.js static public directory:
+  - `frontend/public/Moma.jpg`
+- Applied a soft gradient overlay in CSS to keep text readable.
+
+### Why this matters
+- Improves first visual impression in demo and presentation.
+- Keeps UI readable and professional instead of sacrificing usability for style.
+
+### Dumbified explanation
+- We put your picture behind the whole app.
+- We added a light layer on top so words are still easy to read.
+
+### How to test
+1. Run frontend:
+   - `cd frontend`
+   - `npm run dev`
+2. Open:
+   - `http://localhost:3000`
+3. Confirm:
+   - Background image is visible.
+   - Text and buttons are still readable.
+
+### Success criteria
+- No broken image icon or blank background.
+- No CSS errors.
+- App remains readable on desktop and laptop screens.
+
+### Theory: why it works when successful
+- Next.js exposes anything in `public/` at the app root URL.
+- CSS `url("/Moma.jpg")` loads that file directly from the running frontend server.
+
+## Step 7.5 - UX Polish Pass (Navigation, Feedback, Readability)
+
+Date: 2026-04-23
+
+### What was implemented
+- Added quick section navigation links (`Artworks`, `Buyers`, `Acquisitions`) in the hero.
+- Added dashboard summary cards for:
+  - total artworks
+  - total buyers
+  - acquired count
+  - pending approval count
+- Improved search UX:
+  - added `Reset` button for query/filter reset.
+- Improved form UX and safety:
+  - `required` fields on key create inputs
+  - acquisition create disabled when there are no buyers
+  - helper hints for empty user/acquisition states
+- Improved loading and scanning:
+  - skeleton cards while initial artwork list loads
+  - status badges/pills for acquisition status
+- Improved accessibility and polish:
+  - stronger keyboard focus outlines
+  - card hover states and better visual hierarchy.
+
+### Why this matters
+- Makes demo flow faster and clearer for markers.
+- Reduces user confusion and accidental invalid actions.
+- Looks and feels closer to an enterprise dashboard (distinction-level UX direction).
+
+### Dumbified explanation
+- We made the app easier to understand at a glance.
+- You can jump to sections faster, see useful totals, and get clearer visual feedback.
+
+### How to test
+1. Run frontend:
+   - `cd frontend`
+   - `npm run dev`
+2. Open:
+   - `http://localhost:3000`
+3. Verify:
+   - quick nav links jump to correct section
+   - summary cards show live totals
+   - `Reset` clears search and resets page
+   - if no buyers exist, acquisition create is disabled with helpful hint
+   - artwork grid shows skeleton placeholders during initial loading
+   - acquisition statuses display color-coded pills
+   - keyboard tabbing shows clear focus ring.
+
+### Success criteria
+- UI is more structured and easier to use on desktop and laptop.
+- No runtime errors from new UX logic.
+- Build still passes.
+
+### Theory: why it works when successful
+- React state already held all required counts/data, so summary cards are direct derived values.
+- Required/disabled inputs prevent invalid requests before hitting backend.
+- Skeletons and empty hints reduce uncertainty while waiting for API calls.
+
+## Step 7.6 - Responsive Full-Image Backdrop + Floating Cards
+
+Date: 2026-04-23
+
+### What was implemented
+- Reworked the page styling so `Moma.jpg` behaves like a full-screen responsive backdrop.
+- Strengthened floating-layer effect for panels/cards:
+  - translucent surfaces
+  - blur/glass backdrop
+  - stronger shadow depth
+  - lift-on-hover transitions
+- Improved visual contrast for readability while preserving image visibility.
+- Added mobile behavior:
+  - background switches to scroll attachment on small screens
+  - background position adjusted for better crop on phones.
+
+### Why this matters
+- Directly improves perceived UI quality for grading.
+- Makes the app look intentional and polished rather than default/plain.
+- Supports your demo story: "enterprise dashboard layered over acquisition context image."
+
+### Dumbified explanation
+- The image is now the "wallpaper" of the whole app.
+- Cards are like glass tiles sitting on top of that wallpaper and lifting when hovered.
+
+### How to test
+1. Run frontend:
+   - `cd frontend`
+   - `npm run dev`
+2. Open:
+   - `http://localhost:3000`
+3. Verify on desktop:
+   - image fills page behind all content
+   - cards/panels visibly float above image
+   - hovering cards lifts them with stronger shadow
+4. Verify on mobile viewport (browser dev tools):
+   - image remains properly framed (no weird repeat/stretch)
+   - cards still readable and layered.
+
+### Success criteria
+- Background image remains visible across full page.
+- Cards/panels are clearly foreground layers with depth.
+- UX remains readable and responsive.
+- Frontend build passes.
+
+### Theory: why it works when successful
+- `background-size: cover` keeps the image responsive while filling the viewport.
+- Translucent backgrounds + blur + shadow create depth separation from backdrop.
+- Mobile media query adjusts attachment/position to avoid common fixed-background issues on small devices.
+
+## Step 7.7 - Promote Title to Real Header
+
+Date: 2026-04-23
+
+### What was implemented
+- Changed page title structure so project name is the real `h1` header:
+  - `MoMA Acquisition Intelligence Platform`
+- Moved `Artwork Viewer` into a supporting subtitle line.
+- Added subtitle styling for clear hierarchy.
+
+### Why this matters
+- Improves semantic HTML structure.
+- Better accessibility and clearer page hierarchy for markers.
+
+### Dumbified explanation
+- The main project name is now the official big heading.
+- The old title became a smaller subtitle under it.
+
+### How to test
+1. Run frontend: `cd frontend && npm run dev`
+2. Open `http://localhost:3000`
+3. Confirm top section shows:
+   - big main heading = project name
+   - smaller subtitle = `Artwork Viewer`
+
+### Success criteria
+- Header hierarchy is visually clear.
+- Build succeeds with no errors.
+
+### Theory: why it works when successful
+- `h1` represents the page’s primary heading in semantic HTML.
+- Subtitle text provides context without competing with the main title.
+
+## Step 7.8 - Remove Perceived Background Blur
+
+Date: 2026-04-23
+
+### What was implemented
+- Removed glass blur filters (`backdrop-filter`) from hero/cards/panels.
+- Reduced dark overlay intensity so the background image is clearer.
+- Kept floating card shadows and hover lift so depth effect remains.
+
+### Why this matters
+- Preserves the "cards above background" look without making the image look soft.
+- Improves visual clarity for demo and grading screenshots.
+
+### Dumbified explanation
+- We removed the intentional blur layer from the boxes.
+- So the image behind them now looks clearer.
+
+### How to test
+1. Run frontend: `cd frontend && npm run dev`
+2. Open `http://localhost:3000`
+3. Check:
+   - background looks sharper than before
+   - cards still hover/lift with shadow
+   - text remains readable.
+
+### Success criteria
+- No blurry glass effect on content containers.
+- Floating card style still works.
+- Frontend build passes.
+
+### Theory: why it works when successful
+- `backdrop-filter: blur(...)` blurs whatever is behind each panel.
+- Removing that blur keeps the background visually sharp.
+
+### Important note
+- The current image file itself is low resolution (`300x168`).
+- For truly crisp full-screen background on large monitors, replace with a higher-res image (recommended 1920x1080 or higher).
+
+## Step 7.9 - Stronger Card Hover Motion + Theme Palette
+
+Date: 2026-04-23
+
+### What was implemented
+- Added a clear hover-float animation so cards visibly move over the background:
+  - `summaryCard`
+  - `createPanel`
+  - `card`
+  - `miniCard`
+- Added a cohesive theme system using CSS variables:
+  - refined card/background colors for contrast over the MoMA image
+  - harmonized button/label/text colors
+  - stronger readable surfaces and border tones
+- Improved typography hierarchy:
+  - body uses a clean sans stack
+  - headings use a classic serif display stack
+  - better visual separation between title and content text
+- Added reduced-motion fallback for accessibility.
+
+### Why this matters
+- Makes interaction feel intentional and premium in demos.
+- Improves readability and visual consistency against a photographic background.
+- Helps push UI polish into distinction range.
+
+### Dumbified explanation
+- When you hover cards now, they actually float and drift a little.
+- We also picked better text/card colors and fonts so everything is easier to read on the image.
+
+### How to test
+1. Run frontend:
+   - `cd frontend`
+   - `npm run dev`
+2. Open:
+   - `http://localhost:3000`
+3. Verify:
+   - hover any card: it lifts and gently moves
+   - text stays readable on all card types
+   - headings look more premium than default system text
+   - colors look consistent across modules.
+
+### Success criteria
+- Hover movement is clearly visible.
+- No readability issues on photo background.
+- Frontend build succeeds.
+
+### Theory: why it works when successful
+- Keyframe animation on hover creates motion depth against a static background.
+- Color variables keep contrast consistent and easier to tune globally.
+- Separate body/display font stacks improve information hierarchy.
+
+## Step 7.10 - Full-Width Sticky Acquisition Header
+
+Date: 2026-04-23
+
+### What was implemented
+- Added a full-width sticky top header spanning the entire viewport.
+- Header now includes `Acquisition Section` label and navigation links to:
+  - `User Profiles`
+  - `Acquisition Tracking`
+  - backend-served `About This Page`
+- Added anchor scroll offset (`scroll-margin-top`) for section targets so content is not hidden behind sticky header.
+- Simplified hero area by removing duplicate nav buttons.
+
+### Why this matters
+- Improves information architecture and navigation clarity.
+- Matches enterprise dashboard conventions (persistent top navigation).
+- Better demo flow because key sections are always one click away.
+
+### Dumbified explanation
+- You now have a top bar that stays on screen while you scroll.
+- It gives instant shortcuts to users, acquisitions, and the about page.
+
+### How to test
+1. Run frontend:
+   - `cd frontend`
+   - `npm run dev`
+2. Open:
+   - `http://localhost:3000`
+3. Verify:
+   - top header spans full width
+   - header stays visible while scrolling
+   - `User Profiles` jumps to users section
+   - `Acquisition Tracking` jumps to acquisitions section
+   - `About This Page` opens backend about page.
+
+### Success criteria
+- Header remains fixed at top during scroll.
+- Navigation links jump/open the intended destinations.
+- No overlap issues hiding section titles.
+
+### Theory: why it works when successful
+- `position: sticky; top: 0` keeps header pinned after scrolling begins.
+- Section `scroll-margin-top` offsets anchor positions for sticky-header layouts.
+
+## Step 7.11 - Fixed Background Scroll Effect
+
+Date: 2026-04-23
+
+### What was implemented
+- Enabled fixed background behavior on desktop by setting:
+  - `background-attachment: fixed` on `body`.
+- Kept mobile fallback in media query (`scroll`) for better device compatibility.
+
+### Why this matters
+- Creates a parallax-like effect where content moves while background stays fixed.
+- Improves visual polish and makes scrolling feel more dynamic in demo.
+
+### Dumbified explanation
+- The background image now stays in place.
+- Cards and sections scroll over it, which gives that "cool" cinematic effect.
+
+### How to test
+1. Run frontend:
+   - `cd frontend`
+   - `npm run dev`
+2. Open:
+   - `http://localhost:3000`
+3. Scroll down:
+   - background should stay fixed on desktop
+   - page content should move over it.
+
+### Success criteria
+- Desktop shows fixed background during scroll.
+- No layout break with sticky header and sections.
+
+### Theory: why it works when successful
+- `background-attachment: fixed` pins the background to viewport coordinates instead of document flow.

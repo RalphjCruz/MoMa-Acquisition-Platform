@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const PAGE_SIZE = 12;
-const ROLE_OPTIONS = ["curator", "manager", "admin"];
+const ROLE_OPTIONS = ["buyer", "manager", "admin"];
 const ACQUISITION_STATUS_OPTIONS = [
   "considering",
   "approved",
@@ -49,7 +49,7 @@ const emptyCreateArtworkForm = {
 const emptyCreateUserForm = {
   displayName: "",
   email: "",
-  role: "curator"
+  role: "buyer"
 };
 
 const emptyCreateAcquisitionForm = {
@@ -116,6 +116,22 @@ export default function Page() {
 
   const isFirstPage = pagination.page <= 1;
   const isLastPage = pagination.page >= pagination.totalPages;
+  const acquisitionSummary = useMemo(() => {
+    const totals = {
+      considering: 0,
+      approved: 0,
+      acquired: 0,
+      rejected: 0
+    };
+
+    acquisitions.forEach((acquisition) => {
+      if (totals[acquisition.status] !== undefined) {
+        totals[acquisition.status] += 1;
+      }
+    });
+
+    return totals;
+  }, [acquisitions]);
 
   const queryString = useMemo(
     () =>
@@ -548,26 +564,54 @@ export default function Page() {
   };
 
   return (
-    <main className="page">
-      <header className="hero">
-        <div>
-          <p className="eyebrow">MoMA Acquisition Intelligence Platform</p>
-          <h1>Artwork Viewer</h1>
-          <p className="subtext">
-            Simple frontend to validate backend REST services from any laptop.
-          </p>
-        </div>
-        <div className="heroLinks">
-          <a href={`${apiBaseUrl}/about`} target="_blank" rel="noreferrer">
-            About This Page
-          </a>
-          <a href={`${apiBaseUrl}/api/health`} target="_blank" rel="noreferrer">
-            Health
-          </a>
+    <>
+      <header className="stickyHeader">
+        <div className="stickyHeaderInner">
+          <div className="stickyBrand">
+            <p className="stickyKicker">Acquisition Section</p>
+            <p className="stickyTitle">MoMA Acquisition Intelligence Platform</p>
+          </div>
+          <nav className="stickyNav" aria-label="Acquisition section navigation">
+            <a href="#users">User Profiles</a>
+            <a href="#acquisitions">Acquisition Tracking</a>
+            <a href={`${apiBaseUrl}/about`} target="_blank" rel="noreferrer">
+              About This Page
+            </a>
+          </nav>
         </div>
       </header>
 
-      <section className="controls">
+      <main className="page">
+        <header className="hero">
+          <div>
+            <h1>MoMA Acquisition Intelligence Platform</h1>
+            <p className="heroSubtitle">Artwork Viewer</p>
+            <p className="subtext">
+              Simple frontend to validate backend REST services from any laptop.
+            </p>
+          </div>
+        </header>
+
+      <section className="summaryBar" aria-label="Platform summary">
+        <article className="summaryCard">
+          <p className="summaryLabel">Artworks</p>
+          <p className="summaryValue">{pagination.totalItems}</p>
+        </article>
+        <article className="summaryCard">
+          <p className="summaryLabel">Buyers</p>
+          <p className="summaryValue">{users.length}</p>
+        </article>
+        <article className="summaryCard">
+          <p className="summaryLabel">Acquired</p>
+          <p className="summaryValue">{acquisitionSummary.acquired}</p>
+        </article>
+        <article className="summaryCard">
+          <p className="summaryLabel">Pending Approval</p>
+          <p className="summaryValue">{acquisitionSummary.considering}</p>
+        </article>
+      </section>
+
+      <section id="artworks" className="controls">
         <form onSubmit={handleSearch}>
           <input
             type="text"
@@ -576,6 +620,17 @@ export default function Page() {
             onChange={(event) => setDraftSearch(event.target.value)}
           />
           <button type="submit">Search</button>
+          <button
+            type="button"
+            className="ghostButton"
+            onClick={() => {
+              setDraftSearch("");
+              setSearch("");
+              setPage(1);
+            }}
+          >
+            Reset
+          </button>
         </form>
 
         <div className="selects">
@@ -617,12 +672,14 @@ export default function Page() {
           <input
             type="number"
             min="1"
+            required
             placeholder="objectId (required)"
             value={createForm.objectId}
             onChange={(event) => handleCreateChange("objectId", event.target.value)}
           />
           <input
             type="text"
+            required
             placeholder="title (required)"
             value={createForm.title}
             onChange={(event) => handleCreateChange("title", event.target.value)}
@@ -655,7 +712,7 @@ export default function Page() {
         </form>
       </section>
 
-      <section className="status">
+      <section className="status" aria-live="polite">
         {loading && <p>Loading artworks...</p>}
         {!loading && error && <p className="error">{error}</p>}
         {!loading && actionError && <p className="error">{actionError}</p>}
@@ -671,6 +728,16 @@ export default function Page() {
       </section>
 
       <section className="grid">
+        {loading &&
+          items.length === 0 &&
+          Array.from({ length: 6 }).map((_, index) => (
+            <article key={`skeleton-${index}`} className="card skeletonCard">
+              <div className="skeletonLine skeletonTitle" />
+              <div className="skeletonLine" />
+              <div className="skeletonLine" />
+              <div className="skeletonLine short" />
+            </article>
+          ))}
         {items.map((item) => (
           <article key={item._id} className="card">
             {editingId === item._id ? (
@@ -824,11 +891,12 @@ export default function Page() {
         </button>
       </section>
 
-      <section className="modulePanel">
+      <section id="users" className="modulePanel">
         <h2>User Profiles (No Login)</h2>
         <form className="moduleForm" onSubmit={createUser}>
           <input
             type="text"
+            required
             placeholder="displayName"
             value={userForm.displayName}
             onChange={(event) =>
@@ -837,6 +905,7 @@ export default function Page() {
           />
           <input
             type="email"
+            required
             placeholder="email"
             value={userForm.email}
             onChange={(event) =>
@@ -865,6 +934,11 @@ export default function Page() {
         {!usersLoading && !userActionError && userActionMessage && (
           <p className="ok">{userActionMessage}</p>
         )}
+        {!usersLoading && users.length === 0 && (
+          <p className="emptyHint">
+            No buyers yet. Create one buyer first before creating acquisitions.
+          </p>
+        )}
 
         <div className="moduleList">
           {users.map((user) => (
@@ -886,10 +960,17 @@ export default function Page() {
         </div>
       </section>
 
-      <section className="modulePanel">
+      <section id="acquisitions" className="modulePanel">
         <h2>Acquisition Tracking</h2>
+        {users.length === 0 && (
+          <p className="emptyHint">
+            Acquisition creation is disabled until at least one buyer exists.
+          </p>
+        )}
         <form className="moduleForm" onSubmit={createAcquisition}>
           <select
+            required
+            disabled={users.length === 0}
             value={acquisitionForm.userId}
             onChange={(event) =>
               handleAcquisitionFormChange("userId", event.target.value)
@@ -905,6 +986,7 @@ export default function Page() {
           <input
             type="number"
             min="1"
+            required
             placeholder="artworkId (numeric ObjectID)"
             value={acquisitionForm.artworkId}
             onChange={(event) =>
@@ -949,7 +1031,7 @@ export default function Page() {
               handleAcquisitionFormChange("notes", event.target.value)
             }
           />
-          <button type="submit" disabled={creatingAcquisition}>
+          <button type="submit" disabled={creatingAcquisition || users.length === 0}>
             {creatingAcquisition ? "Creating..." : "Create Acquisition"}
           </button>
         </form>
@@ -963,12 +1045,20 @@ export default function Page() {
         {!acquisitionsLoading && !acquisitionActionError && acquisitionActionMessage && (
           <p className="ok">{acquisitionActionMessage}</p>
         )}
+        {!acquisitionsLoading && acquisitions.length === 0 && (
+          <p className="emptyHint">
+            No acquisition records yet. Create one to start tracking approvals and purchases.
+          </p>
+        )}
 
         <div className="moduleList">
           {acquisitions.map((acquisition) => (
             <article key={acquisition._id} className="miniCard">
               <p>
-                <strong>Status:</strong> {acquisition.status}
+                <strong>Status:</strong>{" "}
+                <span className={`statusPill status-${acquisition.status}`}>
+                  {acquisition.status}
+                </span>
               </p>
               <p>
                 <strong>User:</strong>{" "}
@@ -994,7 +1084,15 @@ export default function Page() {
                 <button
                   type="button"
                   className="ghost"
-                  disabled={updatingAcquisitionId === acquisition._id}
+                  title={
+                    acquisition.status !== "approved"
+                      ? "Only approved acquisitions can be marked as acquired."
+                      : "Mark this acquisition as acquired."
+                  }
+                  disabled={
+                    updatingAcquisitionId === acquisition._id ||
+                    acquisition.status !== "approved"
+                  }
                   onClick={() => updateAcquisitionStatus(acquisition, "acquired")}
                 >
                   Mark Acquired
@@ -1014,7 +1112,7 @@ export default function Page() {
           ))}
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }
-
