@@ -60,17 +60,33 @@ const normalizeArtwork = (item) => {
   };
 };
 
-const seedArtworksFromSubset = async () => {
+const VALID_IF_DATA_MODES = new Set(["skip", "merge", "replace"]);
+
+const resolveIfDataMode = (mode = "skip") => {
+  const normalized = String(mode).trim().toLowerCase();
+  return VALID_IF_DATA_MODES.has(normalized) ? normalized : "skip";
+};
+
+const seedArtworksFromSubset = async (options = {}) => {
+  const subsetFileName = options.subsetFileName || "moma_subset_200.json";
+  const ifData = resolveIfDataMode(options.ifData);
+
   const existingCount = await Artwork.countDocuments();
-  if (existingCount > 0) {
+  if (existingCount > 0 && ifData === "skip") {
     return {
       seeded: false,
       reason: "Artwork collection already contains data.",
-      currentCount: existingCount
+      currentCount: existingCount,
+      subsetFileName,
+      ifData
     };
   }
 
-  const subsetPath = path.join(__dirname, "..", "..", "data", "moma_subset_200.json");
+  if (existingCount > 0 && ifData === "replace") {
+    await Artwork.deleteMany({});
+  }
+
+  const subsetPath = path.join(__dirname, "..", "..", "data", subsetFileName);
   const rawData = await fs.readFile(subsetPath, "utf8");
   const parsedItems = JSON.parse(rawData.replace(/^\uFEFF/, ""));
 
@@ -98,6 +114,9 @@ const seedArtworksFromSubset = async () => {
 
   return {
     seeded: true,
+    ifData,
+    subsetFileName,
+    existingCountBefore: existingCount,
     importedRecords: operations.length,
     totalAfterSeed
   };

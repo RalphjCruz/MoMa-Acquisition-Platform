@@ -958,3 +958,605 @@ Date: 2026-04-23
 
 ### Theory: why it works when successful
 - `background-attachment: fixed` pins the background to viewport coordinates instead of document flow.
+
+## Step 7.12 - Backend About Page Upgrade + High-Res Background
+
+Date: 2026-04-23
+
+### What was implemented
+- Rebuilt backend-served `About This Page` HTML:
+  - file: `backend/src/views/about.html`
+  - route remains: `GET /about`
+- Updated content to match current real implementation (not outdated placeholder text):
+  - architecture explanation
+  - technologies used
+  - implemented functionality
+  - limitations/weaknesses
+  - alternative approaches
+  - quick links to app and API endpoints
+- Added a larger local image asset:
+  - `frontend/public/Moma-highres.jpg` (2944x4416)
+- Updated frontend CSS background to use high-density image selection:
+  - `image-set(url("/Moma.jpg") 1x, url("/Moma-highres.jpg") 2x)`
+  - keeps fixed-background scroll effect.
+
+### Why this matters
+- Satisfies the rubric requirement for a backend-served About page with substantial technical explanation.
+- Improves background visual quality on high-resolution screens and projectors.
+
+### Dumbified explanation
+- The About page is now a proper report page from the backend.
+- We also created a much bigger version of your background image so it looks cleaner on larger screens.
+
+### How to test
+1. Backend about page:
+   - run backend (`cd backend && npm run dev`)
+   - open `http://localhost:3001/about`
+2. Frontend background:
+   - run frontend (`cd frontend && npm run dev`)
+   - open `http://localhost:3000`
+   - scroll and verify fixed background quality is improved.
+
+### Success criteria
+- `/about` loads a complete styled HTML explanation page from backend.
+- Frontend background uses high-res asset path and remains fixed on desktop.
+- Frontend build passes.
+
+### Theory: why it works when successful
+- Express `res.sendFile(...)` serves the About HTML directly from backend views.
+- CSS `image-set` allows browsers to choose higher-density background assets on capable displays.
+
+## Step 7.13 - Split User Profiles and Acquisition Tracking into Separate Pages
+
+Date: 2026-04-23
+
+### What was implemented
+- Refactored frontend navigation into true page routes:
+  - `/` for Artwork Catalogue
+  - `/users` for User Profiles
+  - `/acquisitions` for Acquisition Tracking
+- Added shared sticky header component with route-based nav links:
+  - `frontend/app/components/StickyHeader.js`
+- Extracted shared API helpers into:
+  - `frontend/app/lib/api.js`
+- Rebuilt route pages:
+  - `frontend/app/page.js` (artworks only)
+  - `frontend/app/users/page.js` (users only)
+  - `frontend/app/acquisitions/page.js` (acquisitions only)
+- Updated sticky nav styling with active-link state and kept anchor-safe scrolling behavior.
+
+### Why this matters
+- Matches your request: user/acquisition modules are no longer mixed into one long card stack.
+- Improves clarity in demos because each workflow has a dedicated page.
+- Cleaner architecture for extension and marking justification.
+
+### Dumbified explanation
+- We split one crowded page into three clean pages.
+- Clicking `User Profiles` now opens only user stuff, and `Acquisition Tracking` opens only acquisition stuff.
+
+### How to test
+1. Run frontend:
+   - `cd frontend`
+   - `npm run dev`
+2. Open:
+   - `http://localhost:3000`
+3. Test sticky header links:
+   - `Artwork Catalogue` -> opens `/`
+   - `User Profiles` -> opens `/users#users`
+   - `Acquisition Tracking` -> opens `/acquisitions#acquisitions`
+4. Confirm modules are separated:
+   - no user/acquisition cards on main artworks page
+   - users module only on `/users`
+   - acquisitions module only on `/acquisitions`
+
+### Success criteria
+- Navigation goes to correct pages/sections.
+- No mixed module clutter on one page.
+- Frontend build passes with all routes generated.
+
+### Theory: why it works when successful
+- Next.js App Router maps folder structure to pages.
+- Shared header component ensures consistent top-nav behavior across routes.
+
+## Step 7.14 - Remove Card Hover Shake
+
+Date: 2026-04-23
+
+### What was implemented
+- Removed the hover shake animation from all card-like surfaces.
+- Kept a clean hover lift only (`translateY`) for:
+  - summary cards
+  - create panel
+  - artwork cards
+  - mini cards
+- Removed unused `@keyframes card-hover-float` and reduced-motion block tied to it.
+
+### Why this matters
+- Fixes the jittery motion you called out.
+- Keeps polish and depth without visual distraction.
+
+### Dumbified explanation
+- Cards still move up when you hover.
+- They no longer wiggle or shake.
+
+### How to test
+1. Run frontend:
+   - `cd frontend`
+   - `npm run dev`
+2. Open any page (`/`, `/users`, `/acquisitions`).
+3. Hover cards and panels:
+   - they should lift smoothly
+   - no side-to-side shake.
+
+### Success criteria
+- Hover behavior is stable and smooth.
+- Frontend build passes.
+
+### Theory: why it works when successful
+- Removing keyframe rotation/offset motion eliminates oscillation.
+- A simple transition on `transform: translateY(...)` gives controlled feedback.
+
+## Step 7.15 - Validation + Error Handling Hardening
+
+Date: 2026-04-23
+
+### What was implemented
+- Improved backend error middleware (`backend/src/middleware/errorHandler.js`) to handle:
+  - Mongoose validation errors (`400 VALIDATION_ERROR`)
+  - Mongoose cast errors (`400 VALIDATION_ERROR`)
+  - Mongo duplicate key errors (`409 DUPLICATE_KEY`)
+  - malformed JSON body (`400 VALIDATION_ERROR`)
+- Added stricter backend schema constraints:
+  - `user.model.js`: display name length, email regex/length
+  - `artwork.model.js`: max lengths for text fields, objectId min, tags validation
+  - `acquisition.model.js`: currency format (`AAA`), notes max length
+- Added stricter backend service validation:
+  - user displayName/email length checks and query role validation
+  - artwork text/tag limits and clearer validation responses
+  - acquisition currency format, notes length, price upper bound checks
+- Added frontend client-side validation before API calls:
+  - artwork create/edit forms
+  - user create form
+  - acquisition create form (currency/price/notes)
+
+### Why this matters
+- Prevents bad data from entering MongoDB.
+- Returns clearer, consistent API error messages.
+- Gives users immediate feedback in UI before requests are sent.
+
+### Dumbified explanation
+- We added guardrails both in frontend and backend.
+- If input is bad, app now says exactly what is wrong instead of failing vaguely.
+
+### How to test
+1. Frontend validation:
+   - try invalid user email, too-long artwork title, invalid acquisition currency
+   - verify action error appears instantly
+2. Backend validation:
+   - send invalid JSON body -> expect `400 VALIDATION_ERROR`
+   - send invalid IDs/fields -> expect clear `400` or `409` response
+3. Build sanity:
+   - `cd frontend && npm run build`
+   - backend app loads without crash
+
+### Success criteria
+- Invalid payloads consistently return structured validation errors.
+- UI catches common bad inputs before network request.
+- Data constraints enforced at schema and service layers.
+
+### Theory: why it works when successful
+- Layered validation (client + service + schema) stops invalid data at multiple boundaries.
+- Centralized error mapping creates predictable API error contracts for frontend handling.
+
+## Step 7.16 - Rollback Over-Strict Validation Layer
+
+Date: 2026-04-23
+
+### What was implemented
+- Reverted the deep validation hardening layer to a simpler rubric-aligned level.
+- Backend rollback:
+  - restored simpler global error handler behavior
+  - removed extra strict schema constraints added in previous step
+  - removed advanced service-level length/currency/price cap checks
+- Frontend rollback:
+  - removed custom pre-submit strict validators
+  - removed strict input patterns/length caps not required by rubric
+  - kept essential checks (`required`, positive ids, and core workflow rules)
+
+### Why this matters
+- Keeps the project easier to explain and demo.
+- Avoids overengineering beyond assignment requirements.
+- Reduces risk of marking confusion from overly strict edge-case rules.
+
+### Dumbified explanation
+- We removed the “too strict” guardrails.
+- The app still validates the important stuff, but it’s simpler now.
+
+### How to test
+1. Build frontend:
+   - `cd frontend`
+   - `npm run build`
+2. Backend sanity:
+   - `cd backend`
+   - run app and test key CRUD endpoints
+3. UI checks:
+   - create/update artworks
+   - create/delete users
+   - create/update/delete acquisitions
+   - confirm core errors still show for obvious bad input.
+
+### Success criteria
+- Project remains fully functional after rollback.
+- Core validation behaviors still work.
+- Complexity is reduced without breaking rubric requirements.
+
+### Theory: why it works when successful
+- Assignment-level validation focuses on required correctness, not exhaustive enterprise constraints.
+- Simpler validation paths are easier to reason about and present confidently.
+
+## Step 7.17 - Make Sticky Header Fully Opaque
+
+Date: 2026-04-23
+
+### What was implemented
+- Removed transparency from sticky top header.
+- Updated top navigation pill colors from translucent RGBA to solid colors.
+
+### Why this matters
+- Improves readability and visual consistency over image backgrounds.
+- Matches your requirement: header should not be transparent.
+
+### Dumbified explanation
+- The top bar is now a solid color block.
+- You can no longer see the background image through it.
+
+### How to test
+1. Run frontend:
+   - `cd frontend`
+   - `npm run dev`
+2. Open any page (`/`, `/users`, `/acquisitions`).
+3. Confirm sticky header and nav buttons are fully solid.
+
+### Success criteria
+- No background bleed-through in sticky header area.
+- Build passes.
+
+### Theory: why it works when successful
+- Replacing `rgba(...)` with hex solid colors removes alpha transparency.
+
+## Step 7.18 - Responsive Artwork Catalogue Controls
+
+Date: 2026-04-23
+
+### What was implemented
+- Improved responsive layout for artwork catalogue control area:
+  - search input + search/reset buttons
+  - sort and order selectors
+- Converted control layout to grid for stability on narrow screens.
+- Added mobile breakpoints so:
+  - search input spans full width
+  - action buttons align cleanly without overlap
+  - sort/order selectors stack vertically on smaller widths
+  - extra-narrow screens (<=420px) use single-column control flow.
+
+### Why this matters
+- Fixes overlap/crowding seen in mobile view.
+- Improves usability and visual quality for responsive design grading.
+
+### Dumbified explanation
+- The top controls no longer crash into each other on small screens.
+- They now stack properly and stay readable.
+
+### How to test
+1. Run frontend:
+   - `cd frontend`
+   - `npm run dev`
+2. Open `http://localhost:3000`
+3. Use browser responsive mode (mobile widths, e.g. 390px).
+4. Confirm:
+   - search bar is full-width
+   - search/reset buttons are readable and not overlapping
+   - sort/order controls are stacked and aligned.
+
+### Success criteria
+- No text overlap in artwork controls on mobile.
+- Controls remain usable and readable on desktop and mobile.
+- Build passes.
+
+### Theory: why it works when successful
+- Grid layout with breakpoint-specific column changes provides predictable control placement across screen sizes.
+
+## Step 7.19 - Artwork Mobile Layout Organization Pass
+
+Date: 2026-04-23
+
+### What was implemented
+- Improved artwork page mobile organization further:
+  - forced control area into a single-column stack on small screens
+  - kept search block and sort/order block visually separated
+  - made third summary card span full width on mobile for cleaner balance
+- Adjusted spacing to reduce cramped appearance.
+
+### Why this matters
+- Removes awkward half-width KPI card and control crowding on phones.
+- Makes the page look intentional and easier to use in demos.
+
+### Dumbified explanation
+- We made the mobile layout cleaner:
+  - one block after another
+  - no weird lonely half card row.
+
+### How to test
+1. Run frontend:
+   - `cd frontend`
+   - `npm run dev`
+2. Open `http://localhost:3000` and switch to mobile viewport (~375px).
+3. Confirm:
+   - search/reset + sort/order are stacked and aligned
+   - third summary card takes full row
+   - no overlapping labels/text.
+
+### Success criteria
+- Mobile artwork controls are readable and spaced.
+- KPI section looks structured on narrow screens.
+- Build passes.
+
+### Theory: why it works when successful
+- Mobile-first grid stacking removes competing horizontal constraints.
+- Explicit card spanning avoids unbalanced leftover cells in two-column KPI grids.
+
+## Step 7.20 - README Rewrite + Final QA Checklist
+
+Date: 2026-04-23
+
+### What was implemented
+- Rewrote `README.md` into a marker-friendly runbook that matches current project structure.
+- Added explicit 3-page frontend routing docs:
+  - `/` (Artwork Catalogue)
+  - `/users` (User Profiles)
+  - `/acquisitions` (Acquisition Tracking)
+- Added assignment mapping section clarifying Next.js pages as index.html equivalent.
+- Added startup, env, API smoke checks, and database collections sections.
+- Added `FINAL_QA_CHECKLIST.md` as a pre-submission evidence checklist.
+
+### Why this matters
+- Directly addresses two main grading risks:
+  - unclear README execution path
+  - missing explicit QA evidence
+- Makes demo prep and marker verification faster and cleaner.
+
+### Dumbified explanation
+- We made a better manual for your project.
+- We also made a big checklist so you can prove everything works before submitting.
+
+### How to test
+1. Follow README from scratch on a clean terminal session.
+2. Confirm frontend pages and backend endpoints match documented URLs.
+3. Open `FINAL_QA_CHECKLIST.md` and complete checks during final QA run.
+
+### Success criteria
+- README reflects current architecture and run steps accurately.
+- QA checklist covers core CRUD, frontend routes, about page, and demo readiness.
+
+### Theory: why it works when successful
+- Clear runbooks reduce setup ambiguity for markers.
+- Checklist-based QA provides auditable evidence of functional coverage.
+
+## Step 7.21 - Import 10k MoMA Subset into MongoDB
+
+Date: 2026-04-23
+
+### What was implemented
+- Generated 10k subset file:
+  - `backend/data/moma_subset_10000.json`
+- Enhanced seed tooling to support file selection and data handling modes:
+  - `backend/scripts/seedArtworksFromSubset.js`
+  - `backend/src/services/seed.service.js`
+- Added seed options:
+  - `--file=<subset-file>`
+  - `--if-data=skip|merge|replace`
+- Imported 10k subset using merge mode (non-destructive).
+
+### Commands run
+```bash
+cd backend
+npm run build:subset -- --limit=10000
+npm run seed:subset -- --file=moma_subset_10000.json --if-data=merge
+```
+
+### Result
+- Seed completed successfully.
+- Existing artwork records were merged/upserted.
+- Total artwork count after import: `10003` (10k subset + previously existing custom records).
+
+### Why this matters
+- Satisfies final-scale requirement readiness with a 10k dataset path.
+- Demonstrates scalability features (pagination/search) against larger data volume.
+
+### Dumbified explanation
+- We downloaded/prepared 10,000 artworks.
+- Then we loaded them into MongoDB without deleting your existing data.
+
+### How to test
+1. Verify file exists:
+   - `backend/data/moma_subset_10000.json`
+2. Run API:
+   - `GET /api/artworks?limit=1`
+3. Confirm `pagination.totalItems` is around 10k (or exact 10k if using replace mode).
+
+### Success criteria
+- 10k subset file generated
+- seed script accepts custom file
+- DB contains ~10k artwork records
+
+### Theory: why it works when successful
+- Subset builder streams first N objects from MoMA source JSON.
+- Seed service uses bulk upsert to efficiently import large batches.
+
+## Step 7.22 - Reorder Artwork Controls for Better Mobile UX
+
+Date: 2026-04-23
+
+### What was implemented
+- Updated artwork page layout so:
+  - Search bar appears first.
+  - "Showing page X of Y" appears directly under search.
+  - Sort and Order controls appear below search/page info.
+- Refactored controls markup in:
+  - `frontend/app/page.js`
+- Added responsive control classes and breakpoints in:
+  - `frontend/app/globals.css`
+- Kept status area focused on loading/errors/action messages.
+
+### Why this matters
+- Matches assignment expectation of a clearer, professional interface.
+- Improves usability on phones where crowded controls reduce readability.
+
+### Dumbified explanation
+- We made the top controls less messy.
+- You now search first, then see what page you are on, then choose sorting under that.
+- On mobile, buttons and dropdowns stack properly so they are easier to tap.
+
+### Commands run
+```bash
+cd frontend
+npm run build
+```
+
+### How to test
+1. Start backend and frontend.
+2. Open `http://localhost:3000`.
+3. Confirm order is:
+   - Search input/buttons
+   - "Showing page X of Y"
+   - Sort + Order row
+4. Resize browser to mobile width (around 390px).
+5. Confirm controls do not overlap and remain readable.
+
+### Success criteria
+- search row appears above page indicator text
+- sort/order appear below
+- no overlapping at mobile widths
+- frontend build succeeds
+
+### Theory: why it works when successful
+- A grid-based control layout with dedicated rows is more predictable than one wrapped mixed row.
+- Mobile breakpoints force a single-column flow, preventing collisions between input/button/select elements.
+
+## Step 7.23 - Pin Card Action Buttons to Bottom
+
+Date: 2026-04-23
+
+### What was implemented
+- Anchored card action areas to the bottom for consistent layout:
+  - artwork cards on `/`
+  - acquisition mini-cards on `/acquisitions`
+  - user mini-card delete button on `/users`
+- Updated:
+  - `frontend/app/globals.css`
+- Key CSS changes:
+  - made `.card` and `.miniCard` flex columns
+  - changed `.cardActions` to `margin-top: auto`
+  - made `.editForm` full-height flex column so Save/Cancel stays at bottom in edit mode
+
+### Why this matters
+- Improves visual consistency and professionalism.
+- Prevents button jumping when cards have different text lengths.
+
+### Dumbified explanation
+- Some cards had more text, so buttons were at different heights.
+- Now every card pushes buttons to the bottom edge, so rows look neat.
+
+### Commands run
+```bash
+cd frontend
+npm run build
+```
+
+### How to test
+1. Open `/` and compare cards with long and short titles.
+2. Confirm `Edit/Delete` stay aligned near bottom within each card row.
+3. Enter edit mode on a card and confirm `Save/Cancel` is still bottom-aligned.
+4. Open `/acquisitions` and verify action button row is pinned to the card bottom.
+
+### Success criteria
+- action buttons stay at bottom of cards
+- no overlap/regression in mobile view
+- frontend build succeeds
+
+### Theory: why it works when successful
+- In a column flex container, `margin-top: auto` consumes remaining vertical space.
+- This pushes the action row to the bottom regardless of content height above it.
+
+## Step 7.24 - Move Search/Sort Controls Below Quick Create
+
+Date: 2026-04-24
+
+### What was implemented
+- Reordered sections on the Artwork page so the flow is now:
+  1. Quick Create Artwork
+  2. Search + page summary + Sort/Order controls
+  3. Artwork cards grid
+- Updated file:
+  - `frontend/app/page.js`
+
+### Why this matters
+- Matches your required visual order exactly.
+- Keeps create workflow and browsing controls grouped right above results.
+
+### Dumbified explanation
+- We moved the search/sort block down.
+- Now users create first, then filter/sort, then see cards immediately below.
+
+### Commands run
+```bash
+cd frontend
+npm run build
+```
+
+### How to test
+1. Open `http://localhost:3000`.
+2. Confirm `Quick Create Artwork` appears before search/sort.
+3. Confirm search/sort appears directly above cards.
+4. Check mobile width and confirm controls still stack cleanly.
+
+### Success criteria
+- new section order appears correctly
+- no overlap on mobile
+- frontend build succeeds
+
+## Step 7.25 - Move Page Indicator Under Total Artworks
+
+Date: 2026-04-24
+
+### What was implemented
+- Moved `Showing page X of Y` from the search controls block into the status section.
+- It now appears directly below `{total} total artworks`.
+- Updated files:
+  - `frontend/app/page.js`
+  - `frontend/app/globals.css`
+
+### Why this matters
+- Keeps summary information grouped together in one place.
+- Reduces visual clutter in the search/sort control area.
+
+### Dumbified explanation
+- Before: page number text was near search.
+- Now: page number text is under the total artworks line, so both totals are together.
+
+### Commands run
+```bash
+cd frontend
+npm run build
+```
+
+### How to test
+1. Open `http://localhost:3000`.
+2. Find status text under Quick Create + controls.
+3. Confirm first line is `XXXX total artworks`.
+4. Confirm second line is `Showing page X of Y`.
+
+### Success criteria
+- page indicator appears below total artworks
+- search block no longer shows page indicator
+- frontend build succeeds

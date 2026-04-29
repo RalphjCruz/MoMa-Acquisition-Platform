@@ -73,4 +73,3 @@ artworkSchema.index({ classification: 1 });
 artworkSchema.index({ dateAcquired: -1 });
 
 module.exports = mongoose.model("Artwork", artworkSchema);
-

@@ -1,55 +1,80 @@
-# MoMa-Acquisition-Platform
+# MoMA Acquisition Intelligence Platform
 
-MoMA Acquisition Intelligence Platform for the EAD assignment.
+Enterprise Application Development assignment project using:
 
-## Current Implemented Steps
+- Frontend: Next.js + React
+- Backend: Node.js + Express (REST API)
+- Database: MongoDB + Mongoose
 
-- Backend scaffold using Node.js + Express
-- Health endpoint at `GET /api/health`
-- Backend-served About page at `GET /about`
-- MongoDB integration with Mongoose
-- Development fallback using `mongodb-memory-server`
-- Artwork subset seed flow (`backend/data/moma_subset_200.json`)
-- `GET /api/artworks` with query support:
-  - `q`
-  - `department`
-  - `classification`
-  - `artist`
-  - `sortBy`
-  - `order`
-  - `page`
-  - `limit`
-- `GET /api/artworks/:id` (supports Mongo `_id` or numeric `objectId`)
-- `POST /api/artworks` (validated create endpoint)
-- `PATCH /api/artworks/:id` (validated partial update endpoint)
-- `DELETE /api/artworks/:id`
-- User profiles (no auth):
-  - `GET /api/users`
-  - `POST /api/users`
-  - `GET /api/users/:id`
-  - `PATCH /api/users/:id`
-  - `DELETE /api/users/:id`
-- Acquisition tracking:
-  - `GET /api/acquisitions`
-  - `POST /api/acquisitions`
-  - `GET /api/acquisitions/:id`
-  - `PATCH /api/acquisitions/:id`
-  - `DELETE /api/acquisitions/:id`
+## Architecture
+
+- `frontend/` is the client application used to test REST services.
+- `backend/` is the API server that serves data and business logic.
+- `backend/src/views/about.html` is served by backend route `GET /about`.
+
+## Assignment Mapping
+
+- Required `index.html` equivalent frontend page: implemented as Next.js pages:
+  - `http://localhost:3000/` (Artwork Catalogue)
+  - `http://localhost:3000/users` (User Profiles)
+  - `http://localhost:3000/acquisitions` (Acquisition Tracking)
+- Backend About page button/link target:
+  - `http://localhost:3001/about`
+
+## Implemented Features
+
+### Core Requirements
+
+- Node.js + Express REST server
+- MongoDB persistence with Mongoose
+- MoMA subset loading and seed flow
+- Full artwork CRUD:
+  - `POST /api/artworks`
+  - `GET /api/artworks`
+  - `GET /api/artworks/:id`
+  - `PATCH /api/artworks/:id`
+  - `DELETE /api/artworks/:id`
+
+### Distinction-Oriented Extensions
+
+- Search/filter/sort/pagination for artworks
+- User profiles module (no auth mode):
+  - `GET/POST/PATCH/DELETE /api/users`
+- Acquisition tracking module:
+  - `GET/POST/PATCH/DELETE /api/acquisitions`
   - `GET /api/users/:id/acquisitions`
-  - business rule: status can move to `acquired` only from `approved`
-- Next.js frontend viewer:
-  - list view
-  - search
-  - sorting
-  - pagination
-  - quick create
-  - inline edit
-  - delete action
-  - user profile creation/list/delete section (no auth)
-  - acquisition creation/list/status update/delete section
-  - backend about/health quick links
+  - business rule: acquisition can be marked `acquired` only from `approved`
+- Responsive UI with sticky top navigation and mobile layouts
+- Backend served About page with architecture, limitations, and alternatives
 
-## Run Backend
+## Prerequisites
+
+- Node.js `>=18.17.0`
+- npm
+- MongoDB Community Server running locally (default `27017`)
+  - optional: MongoDB Compass for inspecting collections
+
+## Environment Setup
+
+Create these files from examples:
+
+- `backend/.env` from `backend/.env.example`
+- `frontend/.env.local` from `frontend/.env.example`
+
+Default backend `.env.example` values:
+
+```env
+PORT=3001
+NODE_ENV=development
+MONGODB_URI=mongodb://127.0.0.1:27017
+MONGODB_DB_NAME=moma_acquisition_platform
+USE_IN_MEMORY_DB=false
+AUTO_SEED_ON_START=true
+```
+
+## Run the Project
+
+### 1) Start backend
 
 ```bash
 cd backend
@@ -57,9 +82,11 @@ npm install
 npm run dev
 ```
 
-Before running, create `backend/.env` from `backend/.env.example`.
+Expected log includes:
 
-## Run Frontend
+- `Backend listening on port 3001`
+
+### 2) Start frontend
 
 ```bash
 cd frontend
@@ -67,42 +94,68 @@ npm install
 npm run dev
 ```
 
-Before running frontend, create `frontend/.env.local` from `frontend/.env.example`.
-
-Open in browser:
+Open:
 
 - `http://localhost:3000`
 
-## Test Backend Endpoints
+## Frontend Routes
+
+- Artwork Catalogue: `http://localhost:3000/`
+- User Profiles: `http://localhost:3000/users`
+- Acquisition Tracking: `http://localhost:3000/acquisitions`
+
+## Backend Quick Checks
 
 ```bash
 curl http://localhost:3001/api/health
 curl "http://localhost:3001/api/artworks?page=1&limit=5&sortBy=title&order=asc"
 curl "http://localhost:3001/api/artworks?q=Wright&limit=3"
-```
-
-Example user/acquisition flow:
-
-```bash
-curl -X POST "http://localhost:3001/api/users" -H "Content-Type: application/json" -d "{\"displayName\":\"Test Buyer\",\"email\":\"test.buyer@example.com\",\"role\":\"buyer\"}"
 curl "http://localhost:3001/api/users?limit=5"
-curl -X POST "http://localhost:3001/api/acquisitions" -H "Content-Type: application/json" -d "{\"userId\":\"<USER_ID>\",\"artworkId\":2,\"status\":\"considering\",\"proposedPrice\":1200}"
-curl "http://localhost:3001/api/users/<USER_ID>/acquisitions?limit=5"
+curl "http://localhost:3001/api/acquisitions?limit=5"
+curl http://localhost:3001/about
 ```
 
-## Rebuild MoMA Subset (Optional)
+## Optional: Rebuild MoMA Subset
 
 ```bash
 cd backend
 npm run build:subset -- --limit=200
 ```
 
-## Cross-Laptop Compatibility Checklist
+## 10k Dataset Import (Final Scale Test)
 
-- Install Node.js LTS (18.17+ recommended).
-- Install MongoDB Community Server and ensure service is running on `27017`.
-- Clone repo.
-- Create:
-  - `backend/.env` from `backend/.env.example`
-  - `frontend/.env.local` from `frontend/.env.example`
-- Run backend first, then frontend.
+Build and import a 10,000 item subset:
+
+```bash
+cd backend
+npm run build:subset -- --limit=10000
+npm run seed:subset -- --file=moma_subset_10000.json --if-data=merge
+```
+
+Seed mode options:
+
+- `--if-data=skip` (default): skip if artworks already exist
+- `--if-data=merge`: upsert into existing data (non-destructive)
+- `--if-data=replace`: wipe artwork collection then import file
+
+Quick verification:
+
+```bash
+curl "http://localhost:3001/api/artworks?limit=1"
+```
+
+Check `pagination.totalItems` in response (should be around `10000+` depending on merge mode and existing custom records).
+
+## Database Collections
+
+Main MongoDB collections used:
+
+- `artworks`
+- `users`
+- `acquisitions`
+
+## Final QA Evidence
+
+Use the project QA checklist before recording/submitting:
+
+- `FINAL_QA_CHECKLIST.md`

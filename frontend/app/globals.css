@@ -26,7 +26,7 @@ body {
   font-family: var(--font-body);
   background-image:
     linear-gradient(rgba(8, 18, 30, 0.15), rgba(8, 18, 30, 0.28)),
-    url("/Moma.jpg");
+    image-set(url("/Moma.jpg") 1x, url("/Moma-highres.jpg") 2x);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -48,8 +48,8 @@ body {
   top: 0;
   z-index: 1000;
   width: 100%;
-  background: rgba(7, 20, 34, 0.9);
-  border-bottom: 1px solid rgba(168, 192, 212, 0.28);
+  background: #071422;
+  border-bottom: 1px solid #314b61;
   box-shadow: 0 8px 16px rgba(6, 15, 24, 0.2);
 }
 
@@ -92,11 +92,11 @@ body {
   flex-wrap: wrap;
 }
 
-.stickyNav a {
+.stickyNavLink {
   text-decoration: none;
   color: #f8fbff;
-  background: rgba(30, 80, 115, 0.65);
-  border: 1px solid rgba(191, 219, 239, 0.34);
+  background: #215777;
+  border: 1px solid #79a6c4;
   border-radius: 999px;
   padding: 7px 12px;
   font-size: 13px;
@@ -104,9 +104,14 @@ body {
   transition: background 0.2s ease, transform 0.2s ease;
 }
 
-.stickyNav a:hover {
-  background: rgba(42, 108, 152, 0.8);
+.stickyNavLink:hover {
+  background: #2e6e97;
   transform: translateY(-1px);
+}
+
+.stickyNavLink.active {
+  background: #4f93bf;
+  border-color: #e6f3fc;
 }
 
 #artworks,
@@ -176,7 +181,7 @@ h1 {
 }
 
 .summaryCard:hover {
-  animation: card-hover-float 1.2s ease-in-out infinite alternate;
+  transform: translateY(-7px);
   box-shadow: 0 18px 30px var(--shadow-strong);
   border-color: rgba(106, 152, 180, 0.8);
 }
@@ -199,18 +204,38 @@ h1 {
 }
 
 .controls {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
+  display: grid;
+  gap: 10px;
   margin-bottom: 16px;
 }
 
-.controls form {
-  display: flex;
+.searchBlock {
+  display: grid;
+  gap: 6px;
+}
+
+.searchForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
-  flex: 1;
-  min-width: 280px;
+  align-items: center;
+}
+
+.searchButtons {
+  display: grid;
+  grid-auto-flow: column;
+  gap: 10px;
+}
+
+.searchButtons button {
+  min-width: 88px;
+}
+
+.pageSummary {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-700);
+  font-weight: 600;
 }
 
 .controls input,
@@ -223,7 +248,8 @@ h1 {
 }
 
 .controls input {
-  flex: 1;
+  min-width: 0;
+  width: 100%;
   padding: 0 12px;
 }
 
@@ -240,26 +266,33 @@ h1 {
   color: var(--ink-900);
 }
 
-.selects {
-  display: flex;
+.sortControls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(170px, 1fr));
   gap: 10px;
-  flex-wrap: wrap;
+  max-width: 560px;
 }
 
-.selects label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
+.sortControls label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-700);
 }
 
-.selects select {
+.sortControls select {
+  width: 100%;
   padding: 0 10px;
 }
 
 .status {
   margin: 10px 0 16px;
   min-height: 26px;
+}
+
+.statusPageSummary {
+  margin-top: 4px;
 }
 
 .error {
@@ -283,7 +316,7 @@ h1 {
 }
 
 .createPanel:hover {
-  animation: card-hover-float 1.2s ease-in-out infinite alternate;
+  transform: translateY(-6px);
   box-shadow: 0 18px 30px var(--shadow-strong);
   border-color: rgba(106, 152, 180, 0.8);
 }
@@ -331,6 +364,8 @@ h1 {
   border: 1px solid var(--surface-line);
   border-radius: 14px;
   padding: 14px;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 10px 24px var(--shadow-soft);
   transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
   transform: translate3d(0, 0, 0);
@@ -338,7 +373,7 @@ h1 {
 }
 
 .card:hover {
-  animation: card-hover-float 1.2s ease-in-out infinite alternate;
+  transform: translateY(-8px);
   box-shadow: 0 20px 32px var(--shadow-strong);
   border-color: rgba(106, 152, 180, 0.8);
 }
@@ -389,8 +424,10 @@ h1 {
 }
 
 .editForm {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+  height: 100%;
 }
 
 .checkboxLabel {
@@ -407,7 +444,8 @@ h1 {
 }
 
 .cardActions {
-  margin-top: 8px;
+  margin-top: auto;
+  padding-top: 8px;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -499,6 +537,8 @@ h1 {
   border: 1px solid var(--surface-line);
   border-radius: 10px;
   padding: 10px;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 8px 20px var(--shadow-soft);
   transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
   transform: translate3d(0, 0, 0);
@@ -506,7 +546,7 @@ h1 {
 }
 
 .miniCard:hover {
-  animation: card-hover-float 1.2s ease-in-out infinite alternate;
+  transform: translateY(-6px);
   box-shadow: 0 18px 28px var(--shadow-strong);
   border-color: rgba(106, 152, 180, 0.8);
 }
@@ -515,6 +555,11 @@ h1 {
   margin: 0 0 6px;
   font-size: 14px;
   color: var(--ink-700);
+}
+
+.miniCard > button {
+  margin-top: auto;
+  align-self: flex-start;
 }
 
 .statusPill {
@@ -578,28 +623,6 @@ a:focus-visible {
   outline-offset: 2px;
 }
 
-@keyframes card-hover-float {
-  0% {
-    transform: translate3d(0, -6px, 0) rotateX(0.3deg) rotateY(-0.3deg);
-  }
-  50% {
-    transform: translate3d(3px, -11px, 0) rotateX(0.8deg) rotateY(-0.8deg);
-  }
-  100% {
-    transform: translate3d(-2px, -8px, 0) rotateX(-0.3deg) rotateY(0.45deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .summaryCard:hover,
-  .createPanel:hover,
-  .card:hover,
-  .miniCard:hover {
-    animation: none;
-    transform: translateY(-4px);
-  }
-}
-
 @media (max-width: 720px) {
   body {
     background-attachment: scroll;
@@ -616,7 +639,7 @@ a:focus-visible {
     width: 100%;
   }
 
-  .stickyNav a {
+  .stickyNavLink {
     flex: 1;
     text-align: center;
     min-width: 150px;
@@ -630,8 +653,29 @@ a:focus-visible {
     flex-direction: column;
   }
 
-  .controls form {
-    min-width: 0;
+  .controls {
+    gap: 12px;
+  }
+
+  .searchForm {
+    grid-template-columns: 1fr;
+  }
+
+  .searchButtons {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row;
+  }
+
+  .searchButtons button {
+    width: 100%;
+  }
+
+  .sortControls {
+    grid-template-columns: 1fr;
+    max-width: none;
+  }
+
+  .sortControls label {
     width: 100%;
   }
 
@@ -645,5 +689,15 @@ a:focus-visible {
 
   .summaryBar {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .summaryBar .summaryCard:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 420px) {
+  .searchButtons {
+    grid-template-columns: 1fr;
   }
 }

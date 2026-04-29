@@ -74,4 +74,3 @@ acquisitionSchema.index({ status: 1 });
 acquisitionSchema.index({ acquisitionDate: -1 });
 
 module.exports = mongoose.model("Acquisition", acquisitionSchema);
-
