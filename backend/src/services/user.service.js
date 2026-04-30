@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const User = require("../models/user.model");
 const Acquisition = require("../models/acquisition.model");
+const { ASSIGNABLE_ROLE_VALUES, normalizeRole } = require("../constants/roles");
 const {
   escapeRegex,
   normalizeSortOrder,
@@ -11,8 +12,6 @@ const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const USER_ALLOWED_FIELDS = new Set(["displayName", "email", "role"]);
-const ROLE_VALUES = new Set(["buyer", "manager", "admin"]);
-
 const createServiceError = (statusCode, code, message) => {
   const error = new Error(message);
   error.statusCode = statusCode;
@@ -61,12 +60,12 @@ const parseDisplayName = (value) => {
 };
 
 const parseRole = (value, fallback = "buyer") => {
-  const role = normalizeText(value, fallback).toLowerCase();
-  if (!ROLE_VALUES.has(role)) {
+  const role = normalizeRole(normalizeText(value, fallback), fallback);
+  if (!ASSIGNABLE_ROLE_VALUES.has(role)) {
     throw createServiceError(
       400,
       "VALIDATION_ERROR",
-      `role must be one of: ${Array.from(ROLE_VALUES).join(", ")}.`
+      `role must be one of: ${Array.from(ASSIGNABLE_ROLE_VALUES).join(", ")}.`
     );
   }
 

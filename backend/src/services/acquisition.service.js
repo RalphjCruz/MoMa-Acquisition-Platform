@@ -2,13 +2,16 @@ const mongoose = require("mongoose");
 const Acquisition = require("../models/acquisition.model");
 const User = require("../models/user.model");
 const Artwork = require("../models/artwork.model");
+const {
+  ACTIVE_STATUS_VALUES,
+  normalizeStatus
+} = require("../constants/acquisition-status");
 const { normalizeSortOrder, parsePositiveInteger } = require("../utils/query");
 const { ensureValidUserId, createServiceError } = require("./user.service");
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
-const STATUS_VALUES = new Set(["considering", "approved", "acquired", "rejected"]);
 const CREATE_ALLOWED_FIELDS = new Set([
   "userId",
   "artworkId",
@@ -84,13 +87,13 @@ const parseOptionalDate = (value, fieldName) => {
   return parsed;
 };
 
-const parseStatus = (value, fallback = "considering") => {
-  const status = normalizeText(value, fallback).toLowerCase();
-  if (!STATUS_VALUES.has(status)) {
+const parseStatus = (value, fallback = "pending") => {
+  const status = normalizeStatus(normalizeText(value, fallback), fallback);
+  if (!ACTIVE_STATUS_VALUES.has(status)) {
     throw createServiceError(
       400,
       "VALIDATION_ERROR",
-      `status must be one of: ${Array.from(STATUS_VALUES).join(", ")}.`
+      `status must be one of: ${Array.from(ACTIVE_STATUS_VALUES).join(", ")}.`
     );
   }
 
@@ -175,6 +178,7 @@ const validateCreateAcquisitionPayload = async (payload) => {
     currency: normalizeText(payload.currency, "EUR"),
     acquisitionDate: parseOptionalDate(payload.acquisitionDate, "acquisitionDate"),
     notes: normalizeText(payload.notes, ""),
+    requestedQuantity: 1,
     statusHistory: [{ status, changedAt: new Date() }]
   };
 };
@@ -289,6 +293,70 @@ const listAcquisitions = async (query) => {
   };
 };
 
+const createPendingPurchaseRequests = async (buyerUserId, payload) => {
+  const userId = ensureValidUserId(buyerUserId);
+  await ensureUserExists(userId);
+
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw createServiceError(
+      400,
+      "VALIDATION_ERROR",
+      "Request body must be a JSON object."
+    );
+  }
+
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  if (items.length === 0) {
+    throw createServiceError(
+      400,
+      "VALIDATION_ERROR",
+      "items must be a non-empty array."
+    );
+  }
+
+  const result = {
+    created: 0,
+    unchanged: 0,
+    skipped: []
+  };
+
+  for (const entry of items) {
+    const artworkRef = entry?.artworkId;
+
+    const artwork = await resolveArtworkReference(artworkRef);
+    const existing = await Acquisition.findOne({ userId, artworkId: artwork._id });
+
+    if (!existing) {
+      await Acquisition.create({
+        userId,
+        artworkId: artwork._id,
+        status: "pending",
+        requestedQuantity: 1,
+        notes: "Purchase requested from buyer cart.",
+        statusHistory: [{ status: "pending", changedAt: new Date() }]
+      });
+      result.created += 1;
+      continue;
+    }
+
+    if (existing.status === "pending" || existing.status === "considering") {
+      result.unchanged += 1;
+      result.skipped.push({
+        artworkId: artwork.objectId,
+        reason: "Request already pending for this artwork."
+      });
+      continue;
+    }
+
+    result.skipped.push({
+      artworkId: artwork.objectId,
+      reason: `Existing acquisition is ${existing.status}.`
+    });
+  }
+
+  return result;
+};
+
 const getAcquisitionById = async (id) => {
   const acquisitionId = ensureValidAcquisitionId(id);
   const acquisition = await Acquisition.findById(acquisitionId).populate(
@@ -394,5 +462,6 @@ module.exports = {
   createAcquisition,
   updateAcquisition,
   deleteAcquisition,
-  listAcquisitionsByUser
+  listAcquisitionsByUser,
+  createPendingPurchaseRequests
 };

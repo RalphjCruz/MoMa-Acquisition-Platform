@@ -1,11 +1,5 @@
 const mongoose = require("mongoose");
-
-const acquisitionStatusValues = [
-  "considering",
-  "approved",
-  "acquired",
-  "rejected"
-];
+const { ACQUISITION_STATUS_ENUM } = require("../constants/acquisition-status");
 
 const acquisitionSchema = new mongoose.Schema(
   {
@@ -23,8 +17,13 @@ const acquisitionSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: acquisitionStatusValues,
-      default: "considering"
+      enum: ACQUISITION_STATUS_ENUM,
+      default: "pending"
+    },
+    requestedQuantity: {
+      type: Number,
+      min: 1,
+      default: 1
     },
     proposedPrice: {
       type: Number,
@@ -54,7 +53,7 @@ const acquisitionSchema = new mongoose.Schema(
       {
         status: {
           type: String,
-          enum: acquisitionStatusValues,
+          enum: ACQUISITION_STATUS_ENUM,
           required: true
         },
         changedAt: {

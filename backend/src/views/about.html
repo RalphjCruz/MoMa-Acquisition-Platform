@@ -116,22 +116,6 @@
         padding: 14px;
       }
 
-      .ctaRow {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-top: 12px;
-      }
-
-      .ctaRow a {
-        text-decoration: none;
-        background: var(--brand-700);
-        color: #ffffff;
-        padding: 9px 12px;
-        border-radius: 9px;
-        font-size: 14px;
-      }
-
       code {
         background: #eef3f8;
         border: 1px solid #d7e2eb;
@@ -193,7 +177,7 @@
         <div class="listCard">
           <ul>
             <li>Artwork CRUD with search, sort, and pagination.</li>
-            <li>User profile management (buyer/manager/admin roles without login tokens).</li>
+            <li>User profile management (buyer and manager roles with JWT login).</li>
             <li>Acquisition tracking with state changes and purchase workflow constraints.</li>
             <li>Rule enforced: an acquisition can only be marked <code>acquired</code> when current state is <code>approved</code>.</li>
             <li>Responsive frontend that tests backend REST endpoints from browser.</li>
@@ -205,7 +189,7 @@
         <h2>Main Limitations / Weaknesses</h2>
         <div class="listCard">
           <ul>
-            <li>No authentication/authorization flow yet (intentionally simplified for API testing).</li>
+            <li>Authentication and role-based access are implemented, but no refresh token/session revocation flow is included.</li>
             <li>Background image quality still depends on the source photo quality.</li>
             <li>For very large datasets (10k+), additional indexing and query tuning may be needed.</li>
             <li>Current UI is optimized for assignment demonstration, not full production hardening.</li>
@@ -225,14 +209,6 @@
         </div>
       </section>
 
-      <section>
-        <h2>Quick Links</h2>
-        <div class="ctaRow">
-          <a href="/">Back to Application</a>
-          <a href="/api/health">Health Endpoint</a>
-          <a href="/api/artworks?limit=3">Sample Artworks API</a>
-        </div>
-      </section>
     </main>
   </body>
 </html>

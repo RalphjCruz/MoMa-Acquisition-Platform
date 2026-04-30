@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { useAuth } from "../components/AuthProvider";
 import StickyHeader from "../components/StickyHeader";
-import { apiBaseUrl, readErrorMessage } from "../lib/api";
+import { apiBaseUrl, getAuthHeaders, readErrorMessage } from "../lib/api";
 
-const ROLE_OPTIONS = ["buyer", "manager", "admin"];
+const ROLE_OPTIONS = ["buyer", "manager"];
 
 const emptyCreateUserForm = {
   displayName: "",
@@ -14,6 +15,7 @@ const emptyCreateUserForm = {
 };
 
 export default function UsersPage() {
+  const { token, ready, isAuthenticated, isManager } = useAuth();
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState("");
@@ -24,12 +26,16 @@ export default function UsersPage() {
   const [deletingUserId, setDeletingUserId] = useState("");
 
   const fetchUsers = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
     setUsersLoading(true);
     setUsersError("");
-
     try {
       const response = await fetch(
-        `${apiBaseUrl}/api/users?limit=100&sortBy=createdAt&order=desc`
+        `${apiBaseUrl}/api/users?limit=100&sortBy=createdAt&order=desc`,
+        { headers: getAuthHeaders(token) }
       );
       if (!response.ok) {
         throw new Error(await readErrorMessage(response));
@@ -42,11 +48,13 @@ export default function UsersPage() {
     } finally {
       setUsersLoading(false);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    if (ready && isManager) {
+      fetchUsers();
+    }
+  }, [ready, isManager, fetchUsers]);
 
   const createUser = async (event) => {
     event.preventDefault();
@@ -63,10 +71,9 @@ export default function UsersPage() {
 
       const response = await fetch(`${apiBaseUrl}/api/users`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(token, { "Content-Type": "application/json" }),
         body: JSON.stringify(payload)
       });
-
       if (!response.ok) {
         throw new Error(await readErrorMessage(response));
       }
@@ -82,20 +89,18 @@ export default function UsersPage() {
   };
 
   const removeUser = async (user) => {
-    const confirmed = window.confirm(`Delete user "${user.displayName}"?`);
-    if (!confirmed) {
+    if (!window.confirm(`Delete user "${user.displayName}"?`)) {
       return;
     }
 
     setUserActionError("");
     setUserActionMessage("");
     setDeletingUserId(user._id);
-
     try {
       const response = await fetch(`${apiBaseUrl}/api/users/${user._id}`, {
-        method: "DELETE"
+        method: "DELETE",
+        headers: getAuthHeaders(token)
       });
-
       if (!response.ok) {
         throw new Error(await readErrorMessage(response));
       }
@@ -112,88 +117,87 @@ export default function UsersPage() {
   return (
     <>
       <StickyHeader active="users" />
-      <main className="page">
-        <header className="hero">
-          <div>
-            <h1>User Profiles</h1>
-            <p className="heroSubtitle">No Login Mode</p>
-            <p className="subtext">
-              Manage buyers and staff profiles used by acquisition workflows.
-            </p>
-          </div>
-        </header>
-
-        <section id="users" className="modulePanel">
-          <h2>User Profiles (No Login)</h2>
-          <form className="moduleForm" onSubmit={createUser}>
-            <input
-              type="text"
-              required
-              placeholder="displayName"
-              value={userForm.displayName}
-              onChange={(event) =>
-                setUserForm((prev) => ({ ...prev, displayName: event.target.value }))
-              }
-            />
-            <input
-              type="email"
-              required
-              placeholder="email"
-              value={userForm.email}
-              onChange={(event) =>
-                setUserForm((prev) => ({ ...prev, email: event.target.value }))
-              }
-            />
-            <select
-              value={userForm.role}
-              onChange={(event) =>
-                setUserForm((prev) => ({ ...prev, role: event.target.value }))
-              }
-            >
-              {ROLE_OPTIONS.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
-            <button type="submit" disabled={creatingUser}>
-              {creatingUser ? "Creating..." : "Create User"}
-            </button>
-          </form>
-
-          {usersLoading && <p>Loading users...</p>}
-          {!usersLoading && usersError && <p className="error">{usersError}</p>}
-          {!usersLoading && userActionError && (
-            <p className="error">{userActionError}</p>
+      <main className="mx-auto flex max-w-6xl flex-col gap-4 p-4">
+        <section className="rounded-box border border-base-300 bg-base-100 p-4">
+          <h1 className="text-2xl font-bold">User Profiles</h1>
+          {!ready && <p className="text-sm">Loading session...</p>}
+          {ready && (!isAuthenticated || !isManager) && (
+            <p className="text-sm text-warning">Manager access required.</p>
           )}
-          {!usersLoading && !userActionError && userActionMessage && (
-            <p className="ok">{userActionMessage}</p>
-          )}
-          {!usersLoading && users.length === 0 && (
-            <p className="emptyHint">
-              No buyers yet. Create one buyer first before creating acquisitions.
-            </p>
-          )}
-
-          <div className="moduleList">
-            {users.map((user) => (
-              <article key={user._id} className="miniCard">
-                <p>
-                  <strong>{user.displayName}</strong> ({user.role})
-                </p>
-                <p>{user.email}</p>
-                <button
-                  type="button"
-                  className="danger"
-                  disabled={deletingUserId === user._id}
-                  onClick={() => removeUser(user)}
-                >
-                  {deletingUserId === user._id ? "Deleting..." : "Delete User"}
-                </button>
-              </article>
-            ))}
-          </div>
         </section>
+
+        {ready && isAuthenticated && isManager && (
+          <>
+            <section className="rounded-box border border-base-300 bg-base-100 p-4">
+              <h2 className="mb-2 font-semibold">Create User</h2>
+              <form className="grid gap-2 md:grid-cols-4" onSubmit={createUser}>
+                <input
+                  className="input input-bordered input-sm"
+                  type="text"
+                  required
+                  placeholder="displayName"
+                  value={userForm.displayName}
+                  onChange={(event) =>
+                    setUserForm((prev) => ({ ...prev, displayName: event.target.value }))
+                  }
+                />
+                <input
+                  className="input input-bordered input-sm"
+                  type="email"
+                  required
+                  placeholder="email"
+                  value={userForm.email}
+                  onChange={(event) =>
+                    setUserForm((prev) => ({ ...prev, email: event.target.value }))
+                  }
+                />
+                <select
+                  className="select select-bordered select-sm"
+                  value={userForm.role}
+                  onChange={(event) =>
+                    setUserForm((prev) => ({ ...prev, role: event.target.value }))
+                  }
+                >
+                  {ROLE_OPTIONS.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </select>
+                <button className="btn btn-sm btn-primary" type="submit" disabled={creatingUser}>
+                  {creatingUser ? "Creating..." : "Create User"}
+                </button>
+              </form>
+              {userActionError && <p className="mt-2 text-sm text-error">{userActionError}</p>}
+              {userActionMessage && <p className="mt-2 text-sm text-success">{userActionMessage}</p>}
+            </section>
+
+            <section className="rounded-box border border-base-300 bg-base-100 p-4">
+              <h2 className="mb-2 font-semibold">Users</h2>
+              {usersLoading && <p className="text-sm">Loading users...</p>}
+              {usersError && <p className="text-sm text-error">{usersError}</p>}
+              {!usersLoading && users.length === 0 && <p className="text-sm">No users yet.</p>}
+              <div className="grid gap-2 md:grid-cols-2">
+                {users.map((user) => (
+                  <article key={user._id} className="rounded-box border border-base-300 p-3">
+                    <p className="text-sm font-medium">
+                      {user.displayName} ({user.role})
+                    </p>
+                    <p className="text-sm">{user.email}</p>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-error mt-2"
+                      disabled={deletingUserId === user._id}
+                      onClick={() => removeUser(user)}
+                    >
+                      {deletingUserId === user._id ? "Deleting..." : "Delete User"}
+                    </button>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </>
+        )}
       </main>
     </>
   );

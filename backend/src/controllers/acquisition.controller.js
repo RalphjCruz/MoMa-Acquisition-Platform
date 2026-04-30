@@ -48,11 +48,36 @@ const deleteAcquisition = async (req, res, next) => {
   }
 };
 
+const createPurchaseRequests = async (req, res, next) => {
+  try {
+    const result = await acquisitionService.createPendingPurchaseRequests(
+      req.auth.userId,
+      req.body
+    );
+    res.status(201).json({ data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getMyAcquisitions = async (req, res, next) => {
+  try {
+    const result = await acquisitionService.listAcquisitionsByUser(
+      req.auth.userId,
+      req.query
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAcquisitions,
   getAcquisitionById,
   createAcquisition,
   updateAcquisition,
-  deleteAcquisition
+  deleteAcquisition,
+  createPurchaseRequests,
+  getMyAcquisitions
 };
-

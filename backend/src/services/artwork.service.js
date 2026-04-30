@@ -1,4 +1,5 @@
 const Artwork = require("../models/artwork.model");
+const Acquisition = require("../models/acquisition.model");
 const mongoose = require("mongoose");
 const {
   escapeRegex,
@@ -359,6 +360,12 @@ const listArtworks = async (query) => {
   const skip = (page - 1) * limit;
 
   const filter = buildArtworkFilter(query);
+  const acquiredArtworkIds = await Acquisition.distinct("artworkId", {
+    status: "acquired"
+  });
+  if (acquiredArtworkIds.length > 0) {
+    filter._id = { $nin: acquiredArtworkIds };
+  }
   const sort = resolveSort(query.sortBy, query.order);
 
   const [data, totalItems] = await Promise.all([

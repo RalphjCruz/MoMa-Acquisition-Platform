@@ -2,6 +2,7 @@ const express = require("express");
 
 const healthRoutes = require("./health.routes");
 const aboutRoutes = require("./about.routes");
+const authRoutes = require("./auth.routes");
 const artworksRoutes = require("./artworks.routes");
 const usersRoutes = require("./users.routes");
 const acquisitionsRoutes = require("./acquisitions.routes");
@@ -22,6 +23,7 @@ router.get("/", (_req, res) => {
 });
 
 router.use("/api/health", healthRoutes);
+router.use("/api/auth", authRoutes);
 router.use("/api/artworks", artworksRoutes);
 router.use("/api/users", usersRoutes);
 router.use("/api/acquisitions", acquisitionsRoutes);

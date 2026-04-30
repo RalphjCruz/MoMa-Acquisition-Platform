@@ -2,8 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useAuth } from "./components/AuthProvider";
+import { useCart } from "./components/CartProvider";
 import StickyHeader from "./components/StickyHeader";
-import { apiBaseUrl, buildQueryString, readErrorMessage } from "./lib/api";
+import {
+  apiBaseUrl,
+  buildQueryString,
+  getAuthHeaders,
+  readErrorMessage
+} from "./lib/api";
 
 const PAGE_SIZE = 12;
 
@@ -16,6 +23,9 @@ const emptyCreateArtworkForm = {
 };
 
 export default function ArtworksPage() {
+  const { ready, token, isBuyer, isManager, isAuthenticated } = useAuth();
+  const { addItem, hasItem, totalItems } = useCart();
+
   const [search, setSearch] = useState("");
   const [draftSearch, setDraftSearch] = useState("");
   const [sortBy, setSortBy] = useState("title");
@@ -29,6 +39,7 @@ export default function ArtworksPage() {
     totalItems: 0,
     totalPages: 1
   });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
@@ -48,6 +59,8 @@ export default function ArtworksPage() {
   });
   const [updatingId, setUpdatingId] = useState("");
   const [deletingId, setDeletingId] = useState("");
+  const [requestArtworkIds, setRequestArtworkIds] = useState(new Set());
+
 
   const isFirstPage = pagination.page <= 1;
   const isLastPage = pagination.page >= pagination.totalPages;
@@ -64,6 +77,13 @@ export default function ArtworksPage() {
     [search, page, sortBy, order]
   );
 
+  const visibleItems = useMemo(() => {
+    if (!isBuyer) {
+      return items;
+    }
+    return items.filter((item) => !hasItem(item._id) && !requestArtworkIds.has(item._id));
+  }, [isBuyer, items, hasItem, requestArtworkIds]);
+
   const fetchArtworks = useCallback(
     async (signal) => {
       setLoading(true);
@@ -73,7 +93,6 @@ export default function ArtworksPage() {
         const response = await fetch(`${apiBaseUrl}/api/artworks?${queryString}`, {
           signal
         });
-
         if (!response.ok) {
           throw new Error(`Backend responded with ${response.status}`);
         }
@@ -86,25 +105,19 @@ export default function ArtworksPage() {
           totalPages: 1
         };
 
-        if (nextPagination.totalPages < page) {
-          setPage(nextPagination.totalPages);
-          return;
-        }
-
         setItems(payload.data ?? []);
         setPagination(nextPagination);
       } catch (err) {
-        if (err.name === "AbortError") {
-          return;
+        if (err.name !== "AbortError") {
+          setError(
+            "Failed to load artworks. Check backend is running and NEXT_PUBLIC_API_BASE_URL is correct."
+          );
         }
-        setError(
-          "Failed to load artworks. Check backend is running and NEXT_PUBLIC_API_BASE_URL is correct."
-        );
       } finally {
         setLoading(false);
       }
     },
-    [page, queryString]
+    [queryString]
   );
 
   useEffect(() => {
@@ -113,15 +126,48 @@ export default function ArtworksPage() {
     return () => controller.abort();
   }, [fetchArtworks]);
 
-  const handleSearch = (event) => {
-    event.preventDefault();
-    setPage(1);
-    setSearch(draftSearch.trim());
-  };
+  const fetchBuyerRequestArtworkIds = useCallback(async () => {
+    if (!isBuyer || !token) {
+      setRequestArtworkIds(new Set());
+      return;
+    }
 
-  const handleCreateChange = (field, value) => {
-    setCreateForm((prev) => ({ ...prev, [field]: value }));
-  };
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/api/acquisitions/my?limit=500&sortBy=createdAt&order=desc`,
+        { headers: getAuthHeaders(token) }
+      );
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+
+      const payload = await response.json();
+      const ids = new Set(
+        (payload.data ?? [])
+          .map((request) => request?.artworkId?._id)
+          .filter(Boolean)
+      );
+      setRequestArtworkIds(ids);
+    } catch (_error) {
+      // silent fallback keeps catalogue usable even if requests fail to load
+    }
+  }, [isBuyer, token]);
+
+  useEffect(() => {
+    if (ready) {
+      fetchBuyerRequestArtworkIds();
+    }
+  }, [ready, fetchBuyerRequestArtworkIds]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const handler = () => fetchBuyerRequestArtworkIds();
+    window.addEventListener("buyer-purchase-submitted", handler);
+    return () => window.removeEventListener("buyer-purchase-submitted", handler);
+  }, [fetchBuyerRequestArtworkIds]);
+
 
   const handleCreate = async (event) => {
     event.preventDefault();
@@ -145,10 +191,9 @@ export default function ArtworksPage() {
 
       const response = await fetch(`${apiBaseUrl}/api/artworks`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(token, { "Content-Type": "application/json" }),
         body: JSON.stringify(payload)
       });
-
       if (!response.ok) {
         throw new Error(await readErrorMessage(response));
       }
@@ -165,8 +210,6 @@ export default function ArtworksPage() {
   };
 
   const startEdit = (item) => {
-    setActionError("");
-    setActionMessage("");
     setEditingId(item._id);
     setEditForm({
       title: item.title || "",
@@ -176,11 +219,6 @@ export default function ArtworksPage() {
       isPublicDomain: Boolean(item.isPublicDomain),
       tags: Array.isArray(item.tags) ? item.tags.join(", ") : ""
     });
-  };
-
-  const cancelEdit = () => {
-    setEditingId("");
-    setUpdatingId("");
   };
 
   const saveEdit = async (item) => {
@@ -203,10 +241,9 @@ export default function ArtworksPage() {
 
       const response = await fetch(`${apiBaseUrl}/api/artworks/${item.objectId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(token, { "Content-Type": "application/json" }),
         body: JSON.stringify(payload)
       });
-
       if (!response.ok) {
         throw new Error(await readErrorMessage(response));
       }
@@ -222,10 +259,7 @@ export default function ArtworksPage() {
   };
 
   const removeArtwork = async (item) => {
-    const confirmed = window.confirm(
-      `Delete "${item.title}" (objectId ${item.objectId})?`
-    );
-    if (!confirmed) {
+    if (!window.confirm(`Delete "${item.title}" (objectId ${item.objectId})?`)) {
       return;
     }
 
@@ -235,9 +269,9 @@ export default function ArtworksPage() {
 
     try {
       const response = await fetch(`${apiBaseUrl}/api/artworks/${item.objectId}`, {
-        method: "DELETE"
+        method: "DELETE",
+        headers: getAuthHeaders(token)
       });
-
       if (!response.ok) {
         throw new Error(await readErrorMessage(response));
       }
@@ -254,318 +288,304 @@ export default function ArtworksPage() {
   return (
     <>
       <StickyHeader active="artworks" />
-      <main className="page">
-        <header className="hero">
-          <div>
-            <h1>Artwork Catalogue</h1>
-            <p className="heroSubtitle">REST Testing Interface</p>
-            <p className="subtext">
-              Browse, create, update, and delete artworks from the MoMA subset.
-            </p>
-          </div>
-        </header>
-
-        <section className="summaryBar" aria-label="Artworks summary">
-          <article className="summaryCard">
-            <p className="summaryLabel">Total Artworks</p>
-            <p className="summaryValue">{pagination.totalItems}</p>
-          </article>
-          <article className="summaryCard">
-            <p className="summaryLabel">Current Page</p>
-            <p className="summaryValue">{pagination.page}</p>
-          </article>
-          <article className="summaryCard">
-            <p className="summaryLabel">Total Pages</p>
-            <p className="summaryValue">{pagination.totalPages}</p>
-          </article>
+      <main className="mx-auto flex max-w-6xl flex-col gap-4 p-4">
+        <section className="rounded-box border border-base-300 bg-base-100 p-4">
+          <h1 className="text-2xl font-bold">Artwork Catalogue</h1>
+          <p className="text-sm text-base-content/80">
+            Managers can edit/remove artworks. Buyers can add artworks to cart.
+          </p>
+          {ready && isBuyer && <p className="mt-2 text-sm">Cart items: {totalItems}</p>}
+          {ready && !isAuthenticated && (
+            <p className="mt-2 text-sm">Login as buyer or manager to unlock actions.</p>
+          )}
+          {actionError && <p className="mt-2 text-sm text-error">{actionError}</p>}
+          {actionMessage && <p className="mt-2 text-sm text-success">{actionMessage}</p>}
+          {error && <p className="mt-2 text-sm text-error">{error}</p>}
         </section>
 
-        <section className="createPanel">
-          <h2>Quick Create Artwork</h2>
-          <form className="createForm" onSubmit={handleCreate}>
-            <input
-              type="number"
-              min="1"
-              required
-              placeholder="objectId (required)"
-              value={createForm.objectId}
-              onChange={(event) => handleCreateChange("objectId", event.target.value)}
-            />
-            <input
-              type="text"
-              required
-              placeholder="title (required)"
-              value={createForm.title}
-              onChange={(event) => handleCreateChange("title", event.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="artist"
-              value={createForm.artistDisplayName}
-              onChange={(event) =>
-                handleCreateChange("artistDisplayName", event.target.value)
-              }
-            />
-            <input
-              type="text"
-              placeholder="department"
-              value={createForm.department}
-              onChange={(event) => handleCreateChange("department", event.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="classification"
-              value={createForm.classification}
-              onChange={(event) =>
-                handleCreateChange("classification", event.target.value)
-              }
-            />
-            <button type="submit" disabled={creating}>
-              {creating ? "Creating..." : "Create"}
-            </button>
-          </form>
-        </section>
-
-        <section id="artworks" className="controls">
-          <div className="searchBlock">
-            <form className="searchForm" onSubmit={handleSearch}>
+        {isManager && (
+          <section className="rounded-box border border-base-300 bg-base-100 p-4">
+            <h2 className="mb-2 font-semibold">Create Artwork</h2>
+            <form className="grid gap-2 md:grid-cols-3" onSubmit={handleCreate}>
               <input
-                type="text"
-                value={draftSearch}
-                placeholder="Search title, artist, medium..."
-                onChange={(event) => setDraftSearch(event.target.value)}
+                className="input input-bordered input-sm"
+                type="number"
+                min="1"
+                required
+                placeholder="objectId"
+                value={createForm.objectId}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, objectId: event.target.value }))
+                }
               />
-              <div className="searchButtons">
-                <button type="submit">Search</button>
-                <button
-                  type="button"
-                  className="ghostButton"
-                  onClick={() => {
-                    setDraftSearch("");
-                    setSearch("");
-                    setPage(1);
-                  }}
-                >
-                  Reset
-                </button>
-              </div>
+              <input
+                className="input input-bordered input-sm"
+                type="text"
+                required
+                placeholder="title"
+                value={createForm.title}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, title: event.target.value }))
+                }
+              />
+              <input
+                className="input input-bordered input-sm"
+                type="text"
+                placeholder="artist"
+                value={createForm.artistDisplayName}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    artistDisplayName: event.target.value
+                  }))
+                }
+              />
+              <input
+                className="input input-bordered input-sm"
+                type="text"
+                placeholder="department"
+                value={createForm.department}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, department: event.target.value }))
+                }
+              />
+              <input
+                className="input input-bordered input-sm"
+                type="text"
+                placeholder="classification"
+                value={createForm.classification}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, classification: event.target.value }))
+                }
+              />
+              <button className="btn btn-sm btn-primary" type="submit" disabled={creating}>
+                {creating ? "Creating..." : "Create"}
+              </button>
             </form>
-          </div>
-
-          <div className="sortControls">
-            <label>
-              Sort
-              <select
-                value={sortBy}
-                onChange={(event) => {
-                  setPage(1);
-                  setSortBy(event.target.value);
-                }}
-              >
-                <option value="title">Title</option>
-                <option value="artist">Artist</option>
-                <option value="dateAcquired">Date Acquired</option>
-                <option value="createdAt">Created</option>
-              </select>
-            </label>
-
-            <label>
-              Order
-              <select
-                value={order}
-                onChange={(event) => {
-                  setPage(1);
-                  setOrder(event.target.value);
-                }}
-              >
-                <option value="asc">Ascending</option>
-                <option value="desc">Descending</option>
-              </select>
-            </label>
-          </div>
-        </section>
-
-        <section className="status" aria-live="polite">
-          {loading && <p>Loading artworks...</p>}
-          {!loading && error && <p className="error">{error}</p>}
-          {!loading && actionError && <p className="error">{actionError}</p>}
-          {!loading && !actionError && actionMessage && (
-            <p className="ok">{actionMessage}</p>
-          )}
-          {!loading && !error && (
-            <>
-              <p>{pagination.totalItems} total artworks</p>
-              <p className="statusPageSummary">
-                Showing page {pagination.page} of {pagination.totalPages}
-              </p>
-            </>
-          )}
-        </section>
-
-        <section className="grid">
-          {loading &&
-            items.length === 0 &&
-            Array.from({ length: 6 }).map((_, index) => (
-              <article key={`skeleton-${index}`} className="card skeletonCard">
-                <div className="skeletonLine skeletonTitle" />
-                <div className="skeletonLine" />
-                <div className="skeletonLine" />
-                <div className="skeletonLine short" />
-              </article>
-            ))}
-          {items.map((item) => (
-            <article key={item._id} className="card">
-              {editingId === item._id ? (
-                <div className="editForm">
-                  <input
-                    type="text"
-                    value={editForm.title}
-                    placeholder="Title"
-                    onChange={(event) =>
-                      setEditForm((prev) => ({ ...prev, title: event.target.value }))
-                    }
-                  />
-                  <input
-                    type="text"
-                    value={editForm.artistDisplayName}
-                    placeholder="Artist"
-                    onChange={(event) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        artistDisplayName: event.target.value
-                      }))
-                    }
-                  />
-                  <input
-                    type="text"
-                    value={editForm.department}
-                    placeholder="Department"
-                    onChange={(event) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        department: event.target.value
-                      }))
-                    }
-                  />
-                  <input
-                    type="text"
-                    value={editForm.classification}
-                    placeholder="Classification"
-                    onChange={(event) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        classification: event.target.value
-                      }))
-                    }
-                  />
-                  <input
-                    type="text"
-                    value={editForm.tags}
-                    placeholder="Tags (comma separated)"
-                    onChange={(event) =>
-                      setEditForm((prev) => ({ ...prev, tags: event.target.value }))
-                    }
-                  />
-                  <label className="checkboxLabel">
-                    <input
-                      type="checkbox"
-                      checked={editForm.isPublicDomain}
-                      onChange={(event) =>
-                        setEditForm((prev) => ({
-                          ...prev,
-                          isPublicDomain: event.target.checked
-                        }))
-                      }
-                    />
-                    Public Domain
-                  </label>
-                  <div className="cardActions">
-                    <button
-                      type="button"
-                      disabled={updatingId === item._id}
-                      onClick={() => saveEdit(item)}
-                    >
-                      {updatingId === item._id ? "Saving..." : "Save"}
-                    </button>
-                    <button type="button" className="ghost" onClick={cancelEdit}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <h2>{item.title || "Untitled"}</h2>
-                  <p>
-                    <strong>Artist:</strong>{" "}
-                    {item.artistDisplayName || "Unknown Artist"}
-                  </p>
-                  <p>
-                    <strong>Department:</strong> {item.department || "Unknown"}
-                  </p>
-                  <p>
-                    <strong>Classification:</strong>{" "}
-                    {item.classification || "Unknown"}
-                  </p>
-                  <p>
-                    <strong>Object ID:</strong> {item.objectId}
-                  </p>
-                  <div className="cardActions">
-                    <button type="button" onClick={() => startEdit(item)}>
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="danger"
-                      disabled={deletingId === item._id}
-                      onClick={() => removeArtwork(item)}
-                    >
-                      {deletingId === item._id ? "Deleting..." : "Delete"}
-                    </button>
-                  </div>
-                </>
-              )}
-            </article>
-          ))}
-        </section>
-
-        {!loading && !error && items.length === 0 && (
-          <section className="empty">
-            <p>No artworks matched your query.</p>
           </section>
         )}
 
-        <section className="pagination">
-          <button
-            type="button"
-            disabled={isFirstPage || loading}
-            onClick={() => setPage(1)}
+        <section className="rounded-box border border-base-300 bg-base-100 p-4">
+          <h2 className="mb-2 font-semibold">Filters</h2>
+          <form
+            className="grid gap-2 md:grid-cols-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setPage(1);
+              setSearch(draftSearch.trim());
+            }}
           >
-            First
-          </button>
-          <button
-            type="button"
-            disabled={isFirstPage || loading}
-            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-          >
-            Previous
-          </button>
-          <span>
-            Page {pagination.page} / {pagination.totalPages}
-          </span>
-          <button
-            type="button"
-            disabled={isLastPage || loading}
-            onClick={() => setPage((prev) => Math.min(pagination.totalPages, prev + 1))}
-          >
-            Next
-          </button>
-          <button
-            type="button"
-            disabled={isLastPage || loading}
-            onClick={() => setPage(pagination.totalPages)}
-          >
-            Last
-          </button>
+            <input
+              className="input input-bordered input-sm md:col-span-2"
+              type="text"
+              value={draftSearch}
+              placeholder="Search..."
+              onChange={(event) => setDraftSearch(event.target.value)}
+            />
+            <button className="btn btn-sm" type="submit">
+              Search
+            </button>
+            <button
+              className="btn btn-sm btn-outline"
+              type="button"
+              onClick={() => {
+                setDraftSearch("");
+                setSearch("");
+                setPage(1);
+              }}
+            >
+              Reset
+            </button>
+            <select
+              className="select select-bordered select-sm"
+              value={sortBy}
+              onChange={(event) => {
+                setPage(1);
+                setSortBy(event.target.value);
+              }}
+            >
+              <option value="title">Sort: Title</option>
+              <option value="artist">Sort: Artist</option>
+              <option value="dateAcquired">Sort: Date Acquired</option>
+              <option value="createdAt">Sort: Created</option>
+            </select>
+            <select
+              className="select select-bordered select-sm"
+              value={order}
+              onChange={(event) => {
+                setPage(1);
+                setOrder(event.target.value);
+              }}
+            >
+              <option value="asc">Order: Asc</option>
+              <option value="desc">Order: Desc</option>
+            </select>
+          </form>
+        </section>
+
+        <section className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {loading && <p>Loading artworks...</p>}
+          {!loading &&
+            visibleItems.map((item) => (
+              <article key={item._id} className="card border border-base-300 bg-base-100">
+                <div className="card-body p-4">
+                  {editingId === item._id && isManager ? (
+                    <div className="grid gap-2">
+                      <input
+                        className="input input-bordered input-sm"
+                        type="text"
+                        value={editForm.title}
+                        placeholder="Title"
+                        onChange={(event) =>
+                          setEditForm((prev) => ({ ...prev, title: event.target.value }))
+                        }
+                      />
+                      <input
+                        className="input input-bordered input-sm"
+                        type="text"
+                        value={editForm.artistDisplayName}
+                        placeholder="Artist"
+                        onChange={(event) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            artistDisplayName: event.target.value
+                          }))
+                        }
+                      />
+                      <input
+                        className="input input-bordered input-sm"
+                        type="text"
+                        value={editForm.department}
+                        placeholder="Department"
+                        onChange={(event) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            department: event.target.value
+                          }))
+                        }
+                      />
+                      <input
+                        className="input input-bordered input-sm"
+                        type="text"
+                        value={editForm.classification}
+                        placeholder="Classification"
+                        onChange={(event) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            classification: event.target.value
+                          }))
+                        }
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary"
+                          disabled={updatingId === item._id}
+                          onClick={() => saveEdit(item)}
+                        >
+                          {updatingId === item._id ? "Saving..." : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          onClick={() => setEditingId("")}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <h3 className="card-title text-base">{item.title || "Untitled"}</h3>
+                      <p className="text-sm">Artist: {item.artistDisplayName || "Unknown"}</p>
+                      <p className="text-sm">Department: {item.department || "Unknown"}</p>
+                      <p className="text-sm">
+                        Classification: {item.classification || "Unknown"}
+                      </p>
+                      <p className="text-sm">Object ID: {item.objectId}</p>
+                      <div className="card-actions mt-2">
+                        {isBuyer && (
+                          <button
+                            type="button"
+                            className="btn btn-sm"
+                            disabled={hasItem(item._id)}
+                            onClick={() => {
+                              addItem(item);
+                              setActionMessage("Artwork added to cart.");
+                            }}
+                          >
+                            {hasItem(item._id) ? "Added" : "Add To Cart"}
+                          </button>
+                        )}
+                        {isManager && (
+                          <>
+                            <button
+                              type="button"
+                              className="btn btn-sm"
+                              onClick={() => startEdit(item)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-error"
+                              disabled={deletingId === item._id}
+                              onClick={() => removeArtwork(item)}
+                            >
+                              {deletingId === item._id ? "Deleting..." : "Delete"}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </article>
+            ))}
+        </section>
+
+        {!loading && !error && visibleItems.length === 0 && (
+          <p className="text-sm">No artworks matched your query.</p>
+        )}
+
+        <section className="rounded-box border border-base-300 bg-base-100 p-4">
+          <p className="mb-2 text-sm">
+            Page {pagination.page} of {pagination.totalPages} | {pagination.totalItems} total
+          </p>
+          <div className="join">
+            <button
+              type="button"
+              className="btn btn-sm join-item"
+              disabled={isFirstPage || loading}
+              onClick={() => setPage(1)}
+            >
+              First
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm join-item"
+              disabled={isFirstPage || loading}
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm join-item"
+              disabled={isLastPage || loading}
+              onClick={() => setPage((prev) => Math.min(pagination.totalPages, prev + 1))}
+            >
+              Next
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm join-item"
+              disabled={isLastPage || loading}
+              onClick={() => setPage(pagination.totalPages)}
+            >
+              Last
+            </button>
+          </div>
         </section>
       </main>
     </>
