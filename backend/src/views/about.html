@@ -3,212 +3,164 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>About This Page - MoMA Acquisition Intelligence Platform</title>
+    <title>About This Page - MoMAFlow</title>
     <style>
       :root {
-        --ink-900: #0f2236;
-        --ink-700: #35516b;
-        --brand-700: #0f4f73;
-        --brand-600: #1a678e;
-        --surface: #ffffff;
-        --surface-soft: #f4f8fc;
-        --line: #d4e1ec;
+        --bg: #2f3437;
+        --surface: #e6dfd2;
+        --card: #f3eee4;
+        --ink: #111111;
+        --muted: #3d3d3d;
+        --line: #b7b0a4;
+      }
+
+      * {
+        box-sizing: border-box;
       }
 
       body {
         margin: 0;
         font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: linear-gradient(155deg, #e8f0f8, #f6f8fb);
-        color: var(--ink-900);
+        background: var(--bg);
+        color: var(--ink);
       }
 
       main {
-        max-width: 980px;
-        margin: 32px auto;
-        padding: 26px;
+        max-width: 1000px;
+        margin: 28px auto;
+        padding: 24px;
         background: var(--surface);
-        border-radius: 14px;
         border: 1px solid var(--line);
-        box-shadow: 0 14px 34px rgba(15, 34, 54, 0.12);
+        border-radius: 14px;
       }
 
       h1 {
-        margin: 0 0 8px;
+        margin: 0 0 10px;
         font-family: Cambria, "Palatino Linotype", "Times New Roman", serif;
-        letter-spacing: 0.01em;
       }
 
       h2 {
-        margin: 0 0 8px;
-        color: var(--brand-700);
+        margin: 0 0 10px;
+        font-size: 1.2rem;
       }
 
       p,
       li {
-        color: var(--ink-700);
-        line-height: 1.56;
+        line-height: 1.55;
+        color: var(--muted);
       }
 
       section {
-        margin-bottom: 22px;
+        margin-top: 18px;
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
       }
 
       .eyebrow {
-        margin: 0 0 2px;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        font-size: 12px;
+        font-size: 0.75rem;
         font-weight: 700;
-        color: var(--brand-600);
+        margin: 0 0 4px;
       }
 
-      .subtext {
-        margin: 0 0 16px;
-      }
-
-      .chipRow {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-top: 10px;
-      }
-
-      .chip {
-        font-size: 12px;
-        border-radius: 999px;
-        padding: 5px 10px;
-        background: #ecf5fc;
-        border: 1px solid #c7deef;
-        color: #0f4f73;
-        font-weight: 600;
-      }
-
-      .diagramGrid {
-        display: grid;
-        gap: 10px;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-      }
-
-      .node {
-        border-radius: 10px;
+      .card {
+        background: var(--card);
         border: 1px solid var(--line);
-        background: var(--surface-soft);
+        border-radius: 10px;
         padding: 12px;
       }
 
-      .node h3 {
-        margin: 0 0 6px;
-        font-size: 16px;
-        color: var(--ink-900);
-      }
-
-      .arrow {
-        text-align: center;
-        color: #5f7b94;
-        font-weight: 700;
-        font-size: 18px;
-      }
-
-      .listCard {
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        background: var(--surface-soft);
-        padding: 14px;
+      .grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       }
 
       code {
-        background: #eef3f8;
-        border: 1px solid #d7e2eb;
-        border-radius: 6px;
+        background: #ece6da;
+        border: 1px solid #cfc6b6;
+        border-radius: 5px;
         padding: 1px 5px;
-        color: #10314c;
       }
     </style>
   </head>
   <body>
     <main>
       <p class="eyebrow">About This Page</p>
-      <h1>MoMA Acquisition Intelligence Platform</h1>
-      <p class="subtext">
-        This page is served directly by the backend (<code>/about</code>) and summarizes architecture, implementation
-        choices, limitations, and alternatives for the EAD assignment.
+      <h1>MoMAFlow</h1>
+      <p>
+        This page is served by the backend at <code>/about</code>. It documents the current assignment build,
+        including architecture, workflows, roles, and implemented constraints.
       </p>
 
       <section>
-        <h2>How the Application Works</h2>
-        <p>
-          The frontend (Next.js) sends HTTP requests to the Node.js/Express API. The API routes delegate to
-          controller/service layers, where validation and business rules are applied, then data is persisted via Mongoose
-          in MongoDB.
-        </p>
-
-        <div class="diagramGrid">
-          <article class="node">
-            <h3>Client Layer</h3>
-            <p>Next.js UI for CRUD testing, filtering, sorting, pagination, and acquisition workflows.</p>
-          </article>
-          <div class="arrow">↓ HTTP / JSON ↓</div>
-          <article class="node">
-            <h3>API Layer</h3>
-            <p>Express routes: <code>/api/artworks</code>, <code>/api/users</code>, <code>/api/acquisitions</code>.</p>
-          </article>
-          <div class="arrow">↓ Mongoose ↓</div>
-          <article class="node">
-            <h3>Data Layer</h3>
-            <p>MongoDB collections for artworks, users, and acquisition records/status history.</p>
-          </article>
+        <h2>Architecture Overview</h2>
+        <div class="grid">
+          <div class="card">
+            <strong>Frontend (Next.js)</strong>
+            <p>Catalogue, filters, auth, cart, buyer requests, manager tracking.</p>
+          </div>
+          <div class="card">
+            <strong>API (Node.js + Express)</strong>
+            <p>REST routes for artworks, auth, users, and acquisitions.</p>
+          </div>
+          <div class="card">
+            <strong>Database (MongoDB)</strong>
+            <p>Mongoose models for artworks, users, credentials, and acquisitions.</p>
+          </div>
         </div>
       </section>
 
       <section>
-        <h2>Technologies Used</h2>
-        <div class="chipRow">
-          <span class="chip">Next.js (App Router)</span>
-          <span class="chip">React</span>
-          <span class="chip">Node.js + Express</span>
-          <span class="chip">MongoDB + Mongoose</span>
-          <span class="chip">CORS + Helmet + Morgan</span>
-          <span class="chip">REST API Design</span>
-        </div>
-      </section>
-
-      <section>
-        <h2>Implemented Functionality</h2>
-        <div class="listCard">
+        <h2>Role Workflows</h2>
+        <div class="card">
           <ul>
-            <li>Artwork CRUD with search, sort, and pagination.</li>
-            <li>User profile management (buyer and manager roles with JWT login).</li>
-            <li>Acquisition tracking with state changes and purchase workflow constraints.</li>
-            <li>Rule enforced: an acquisition can only be marked <code>acquired</code> when current state is <code>approved</code>.</li>
-            <li>Responsive frontend that tests backend REST endpoints from browser.</li>
+            <li><strong>Buyer:</strong> browse catalog, add to cart, submit pending purchase requests, view request status.</li>
+            <li><strong>Manager (as admin):</strong> manage artworks (create/update/delete), review users, approve/acquire requests.</li>
+            <li>Catalog excludes items that are already in buyer cart, in requests, or already acquired.</li>
           </ul>
         </div>
       </section>
 
       <section>
-        <h2>Main Limitations / Weaknesses</h2>
-        <div class="listCard">
+        <h2>Auth & Validation</h2>
+        <div class="card">
           <ul>
-            <li>Authentication and role-based access are implemented, but no refresh token/session revocation flow is included.</li>
-            <li>Background image quality still depends on the source photo quality.</li>
-            <li>For very large datasets (10k+), additional indexing and query tuning may be needed.</li>
-            <li>Current UI is optimized for assignment demonstration, not full production hardening.</li>
+            <li>JWT login/register with role-based route protection.</li>
+            <li>Registration requires username, email, role, and password.</li>
+            <li>Password rules: minimum 8 chars, at least one uppercase, at least one special character.</li>
+            <li>Register UI includes confirm-password validation.</li>
           </ul>
         </div>
       </section>
 
       <section>
-        <h2>Alternative Approaches</h2>
-        <div class="listCard">
+        <h2>REST Endpoints (Core)</h2>
+        <div class="card">
+          <p>
+            <code>/api/auth</code>, <code>/api/artworks</code>, <code>/api/users</code>,
+            <code>/api/acquisitions</code>
+          </p>
           <ul>
-            <li>Use Next.js API routes only (single runtime) instead of separate Express layering.</li>
-            <li>Use PostgreSQL for stricter relational constraints (especially purchases/orders).</li>
-            <li>Add JWT-based auth and role-based access control for enterprise security.</li>
-            <li>Add Redis caching for frequent search/filter result sets.</li>
+            <li>Artwork CRUD + search/sort/filter/pagination.</li>
+            <li>Acquisition status flow with manager-controlled approvals.</li>
+            <li>User listing/profile endpoints for manager view.</li>
           </ul>
         </div>
       </section>
 
+      <section>
+        <h2>Assignment Alignment</h2>
+        <div class="card">
+          <ul>
+            <li>Node.js/Express server with REST services.</li>
+            <li>React/Next.js client for testing and consuming all services.</li>
+            <li>MongoDB persistence using Mongoose models.</li>
+            <li>Full CRUD on artworks plus advanced features (search/filter/sort/pagination, role workflows, validation, responsive UI).</li>
+          </ul>
+        </div>
+      </section>
     </main>
   </body>
 </html>

@@ -52,9 +52,9 @@ test("registers manager and buyer accounts", async () => {
     method: "POST",
     headers: jsonHeaders,
     body: JSON.stringify({
-      displayName: "Manager Test",
+      username: "manager_test",
       email: "manager@test.local",
-      password: "password123",
+      password: "Password@123",
       role: "manager"
     })
   });
@@ -67,9 +67,9 @@ test("registers manager and buyer accounts", async () => {
     method: "POST",
     headers: jsonHeaders,
     body: JSON.stringify({
-      displayName: "Buyer Test",
+      username: "buyer_test",
       email: "buyer@test.local",
-      password: "password123",
+      password: "Password@123",
       role: "buyer"
     })
   });

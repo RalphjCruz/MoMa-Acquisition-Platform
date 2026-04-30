@@ -41,11 +41,12 @@ const listUsers = async (query) => {
 
   if (query.q) {
     const qRegex = new RegExp(escapeRegex(query.q), "i");
-    filter.$or = [{ displayName: qRegex }, { email: qRegex }];
+    filter.$or = [{ username: qRegex }, { displayName: qRegex }, { email: qRegex }];
   }
 
   const sortDirection = normalizeSortOrder(query.order);
   const sortMap = {
+    username: { username: sortDirection },
     displayName: { displayName: sortDirection },
     email: { email: sortDirection },
     role: { role: sortDirection },

@@ -5,7 +5,7 @@
 :root {
   --vs-ink: #171717;
   --vs-surface: rgba(245, 242, 235, 0.9);
-  --vs-accent: #be8a4e;
+  --vs-accent: #2f3437;
   --vs-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
   --vs-radius: 1rem;
   --vs-input-height: 2.75rem;
@@ -14,7 +14,7 @@
 [data-theme="coffee"] {
   --vs-ink: #171717;
   --vs-surface: rgba(245, 242, 235, 0.9);
-  --vs-accent: #be8a4e;
+  --vs-accent: #2f3437;
   --vs-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
 }
 
@@ -25,20 +25,12 @@ body {
 
 body {
   color: var(--vs-ink);
-  background: url("/Moma-highres.jpg") center / cover no-repeat;
+  background: #2f3437;
   position: relative;
 }
 
 body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.2), transparent 42%),
-    linear-gradient(170deg, rgba(17, 17, 17, 0.35), rgba(190, 138, 78, 0.2));
-  backdrop-filter: blur(2px);
+  content: none;
 }
 
 .app-root {
@@ -48,6 +40,10 @@ body::before {
 
 .app-shell {
   @apply mx-auto flex w-full max-w-6xl flex-col gap-5 px-3 pb-10 pt-5 sm:gap-6 sm:px-5 sm:pb-12 md:px-6;
+}
+
+.app-shell-fluid {
+  @apply max-w-none px-2 sm:px-4 md:px-6 lg:px-8 xl:px-10;
 }
 
 .surface-card {
@@ -77,13 +73,19 @@ body::before {
 }
 
 .ui-btn-primary:hover {
-  background-color: color-mix(in srgb, var(--vs-accent) 86%, black);
+  background-color: color-mix(in srgb, var(--vs-accent) 92%, black);
 }
 
 .ui-btn-secondary {
   @apply btn btn-outline;
-  border-color: color-mix(in srgb, var(--vs-ink) 35%, transparent);
-  color: var(--vs-ink);
+  border-color: #2f3437;
+  color: #2f3437;
+}
+
+.ui-btn-secondary:hover {
+  background-color: #2f3437;
+  border-color: #2f3437;
+  color: #e6dfd2;
 }
 
 .ui-input,

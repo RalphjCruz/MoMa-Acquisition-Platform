@@ -11,7 +11,7 @@ const router = express.Router();
 
 router.get("/", (_req, res) => {
   res.status(200).json({
-    message: "MoMA Acquisition Intelligence Platform API",
+    message: "MoMAFlow API",
     health: "/api/health",
     about: "/about",
     resources: {

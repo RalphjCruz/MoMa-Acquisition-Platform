@@ -11,20 +11,10 @@ import StatusBadge from "../components/ui/StatusBadge";
 import SurfaceCard from "../components/ui/SurfaceCard";
 import { apiBaseUrl, getAuthHeaders, readErrorMessage } from "../lib/api";
 
-const ACQUISITION_STATUS_OPTIONS = ["pending", "approved", "acquired", "rejected"];
-
-const emptyCreateAcquisitionForm = {
-  userId: "",
-  artworkId: "",
-  status: "pending",
-  proposedPrice: "",
-  currency: "EUR",
-  notes: ""
-};
-
 export default function AcquisitionsPage() {
   const { token, ready, isAuthenticated, isManager } = useAuth();
   const [users, setUsers] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState("");
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState("");
 
@@ -33,8 +23,6 @@ export default function AcquisitionsPage() {
   const [acquisitionsError, setAcquisitionsError] = useState("");
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
-  const [form, setForm] = useState(emptyCreateAcquisitionForm);
-  const [creating, setCreating] = useState(false);
   const [updatingId, setUpdatingId] = useState("");
   const [deletingId, setDeletingId] = useState("");
 
@@ -49,19 +37,37 @@ export default function AcquisitionsPage() {
     return totals;
   }, [acquisitions]);
 
-  const acquiredByUser = useMemo(() => {
-    const counts = new Map();
-    acquisitions.forEach((acq) => {
-      const normalizedStatus = acq.status === "considering" ? "pending" : acq.status;
-      if (normalizedStatus !== "acquired") {
-        return;
-      }
+  const selectedUser = useMemo(
+    () => users.find((user) => user._id === selectedUserId) ?? null,
+    [users, selectedUserId]
+  );
 
-      const userKey = acq.userId?._id ?? String(acq.userId ?? "");
-      counts.set(userKey, (counts.get(userKey) ?? 0) + 1);
+  const selectedUserAcquisitions = useMemo(() => {
+    if (!selectedUserId) {
+      return [];
+    }
+    return acquisitions.filter((acq) => (acq.userId?._id ?? "") === selectedUserId);
+  }, [acquisitions, selectedUserId]);
+
+  const selectedUserSummary = useMemo(() => {
+    const totals = {
+      pending: 0,
+      approved: 0,
+      acquired: 0,
+      rejected: 0,
+      requested: 0
+    };
+
+    selectedUserAcquisitions.forEach((acq) => {
+      const status = acq.status === "considering" ? "pending" : acq.status;
+      totals.requested += 1;
+      if (totals[status] !== undefined) {
+        totals[status] += 1;
+      }
     });
-    return counts;
-  }, [acquisitions]);
+
+    return totals;
+  }, [selectedUserAcquisitions]);
 
   const fetchUsers = useCallback(async () => {
     if (!token) {
@@ -82,7 +88,13 @@ export default function AcquisitionsPage() {
       const payload = await response.json();
       const nextUsers = payload.data ?? [];
       setUsers(nextUsers);
-      setForm((prev) => (prev.userId ? prev : { ...prev, userId: nextUsers[0]?._id ?? "" }));
+
+      setSelectedUserId((prev) => {
+        if (prev && nextUsers.some((user) => user._id === prev)) {
+          return prev;
+        }
+        return nextUsers[0]?._id ?? "";
+      });
     } catch (err) {
       setUsersError(err.message || "Failed to load users.");
     } finally {
@@ -99,7 +111,7 @@ export default function AcquisitionsPage() {
     setAcquisitionsError("");
     try {
       const response = await fetch(
-        `${apiBaseUrl}/api/acquisitions?limit=100&sortBy=createdAt&order=desc`,
+        `${apiBaseUrl}/api/acquisitions?limit=200&sortBy=createdAt&order=desc`,
         { headers: getAuthHeaders(token) }
       );
       if (!response.ok) {
@@ -121,55 +133,6 @@ export default function AcquisitionsPage() {
       fetchAcquisitions();
     }
   }, [ready, isManager, fetchUsers, fetchAcquisitions]);
-
-  const createAcquisition = async (event) => {
-    event.preventDefault();
-    setActionError("");
-    setActionMessage("");
-    setCreating(true);
-
-    try {
-      const artworkId = Number.parseInt(form.artworkId, 10);
-      if (!Number.isInteger(artworkId) || artworkId <= 0) {
-        throw new Error("artworkId must be a positive numeric objectId.");
-      }
-      if (!form.userId) {
-        throw new Error("Please select a user.");
-      }
-
-      const payload = {
-        userId: form.userId,
-        artworkId,
-        status: form.status,
-        currency: form.currency.trim() || "EUR",
-        notes: form.notes.trim()
-      };
-      if (form.proposedPrice.trim() !== "") {
-        payload.proposedPrice = Number(form.proposedPrice);
-      }
-
-      const response = await fetch(`${apiBaseUrl}/api/acquisitions`, {
-        method: "POST",
-        headers: getAuthHeaders(token, { "Content-Type": "application/json" }),
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) {
-        throw new Error(await readErrorMessage(response));
-      }
-
-      setForm((prev) => ({
-        ...emptyCreateAcquisitionForm,
-        userId: prev.userId,
-        currency: "EUR"
-      }));
-      setActionMessage("Acquisition created.");
-      await fetchAcquisitions();
-    } catch (err) {
-      setActionError(err.message || "Failed to create acquisition.");
-    } finally {
-      setCreating(false);
-    }
-  };
 
   const updateStatus = async (acquisition, status) => {
     setActionError("");
@@ -247,97 +210,83 @@ export default function AcquisitionsPage() {
               />
             </SurfaceCard>
 
-            <SurfaceCard title="Create Acquisition">
-              <form className="grid gap-2 md:grid-cols-3" onSubmit={createAcquisition}>
-                <select
-                  className="select select-bordered ui-select"
-                  required
-                  disabled={users.length === 0}
-                  value={form.userId}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, userId: event.target.value }))
-                  }
-                >
-                  <option value="">Select user</option>
-                  {users.map((user) => (
-                    <option key={user._id} value={user._id}>
-                      {user.displayName} ({user.email})
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="input input-bordered ui-input"
-                  type="number"
-                  min="1"
-                  required
-                  placeholder="artworkId"
-                  value={form.artworkId}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, artworkId: event.target.value }))
-                  }
+            <SurfaceCard title="User Purchase Overview">
+              <div className="grid gap-2 md:grid-cols-[minmax(280px,1fr),2fr] md:items-end">
+                <label className="grid gap-1 text-sm">
+                  <span className="font-medium">Select user</span>
+                  <select
+                    className="select select-bordered ui-select"
+                    disabled={users.length === 0}
+                    value={selectedUserId}
+                    onChange={(event) => setSelectedUserId(event.target.value)}
+                  >
+                    <option value="">Select user</option>
+                    {users.map((user) => (
+                      <option key={user._id} value={user._id}>
+                        {user.displayName} ({user.email})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="text-sm">
+                  {selectedUser ? (
+                    <p>
+                      Viewing purchases for <strong>{selectedUser.displayName}</strong> (
+                      {selectedUser.email})
+                    </p>
+                  ) : (
+                    <p>Select a user to view their requested and acquired artworks.</p>
+                  )}
+                </div>
+              </div>
+
+              {usersLoading && <p className="mt-3 text-sm">Loading users...</p>}
+              <InlineAlert message={usersError} tone="error" className="mt-3" />
+
+              <div className="mt-3">
+                <StatsGrid
+                  items={[
+                    {
+                      label: "Total Requested",
+                      value: selectedUserSummary.requested,
+                      tone: "primary"
+                    },
+                    { label: "Approved", value: selectedUserSummary.approved, tone: "info" },
+                    { label: "Acquired", value: selectedUserSummary.acquired, tone: "success" },
+                    { label: "Rejected", value: selectedUserSummary.rejected, tone: "error" }
+                  ]}
                 />
-                <select
-                  className="select select-bordered ui-select"
-                  value={form.status}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, status: event.target.value }))
-                  }
-                >
-                  {ACQUISITION_STATUS_OPTIONS.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="input input-bordered ui-input"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="proposedPrice"
-                  value={form.proposedPrice}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, proposedPrice: event.target.value }))
-                  }
-                />
-                <input
-                  className="input input-bordered ui-input"
-                  type="text"
-                  placeholder="currency"
-                  value={form.currency}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, currency: event.target.value }))
-                  }
-                />
-                <input
-                  className="input input-bordered ui-input"
-                  type="text"
-                  placeholder="notes"
-                  value={form.notes}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, notes: event.target.value }))
-                  }
-                />
-                <button className="ui-btn-primary" type="submit" disabled={creating}>
-                  {creating ? "Creating..." : "Create Acquisition"}
-                </button>
-              </form>
+              </div>
+              <p className="mt-2 text-sm">
+                Total items purchased (acquired): <strong>{selectedUserSummary.acquired}</strong>
+              </p>
+
               <InlineAlert message={actionError} tone="error" className="mt-3" />
               <InlineAlert message={actionMessage} tone="success" className="mt-3" />
-              {usersLoading && <p className="mt-2 text-sm">Loading users...</p>}
-              <InlineAlert message={usersError} tone="error" className="mt-3" />
             </SurfaceCard>
 
-            <SurfaceCard title="Acquisitions">
+            <SurfaceCard title="Selected User Acquisition Records">
               {acquisitionsLoading && <p className="text-sm">Loading acquisitions...</p>}
               <InlineAlert message={acquisitionsError} tone="error" className="mb-3" />
-              {!acquisitionsLoading && acquisitions.length === 0 && (
-                <p className="text-sm">No acquisition records yet.</p>
+
+              {!acquisitionsLoading && selectedUserId && selectedUserAcquisitions.length === 0 && (
+                <p className="text-sm">No acquisition records for this user yet.</p>
               )}
+              {!selectedUserId && (
+                <p className="text-sm">Select a user above to view their acquisition records.</p>
+              )}
+
               <div className="grid gap-2 md:grid-cols-2">
-                {acquisitions.map((acquisition) => {
+                {selectedUserAcquisitions.map((acquisition) => {
                   const normalizedStatus =
                     acquisition.status === "considering" ? "pending" : acquisition.status;
+                  const canApprove =
+                    normalizedStatus !== "approved" &&
+                    normalizedStatus !== "acquired" &&
+                    normalizedStatus !== "rejected";
+                  const canAcquire = normalizedStatus === "approved";
+                  const canReject = normalizedStatus === "pending";
+
                   return (
                     <article
                       key={acquisition._id}
@@ -348,48 +297,48 @@ export default function AcquisitionsPage() {
                           <strong>Status:</strong> <StatusBadge status={normalizedStatus} />
                         </p>
                         <p className="text-sm">
-                          <strong>User:</strong>{" "}
-                          {acquisition.userId?.displayName ?? acquisition.userId}
-                        </p>
-                        <p className="text-sm">
-                          <strong>Email:</strong> {acquisition.userId?.email ?? "n/a"}
-                        </p>
-                        <p className="text-sm">
-                          <strong>Total Acquired (User):</strong>{" "}
-                          {acquiredByUser.get(
-                            acquisition.userId?._id ?? String(acquisition.userId ?? "")
-                          ) ?? 0}
-                        </p>
-                        <p className="text-sm">
                           <strong>Artwork:</strong>{" "}
                           {acquisition.artworkId?.title ?? acquisition.artworkId} (
                           {acquisition.artworkId?.objectId ?? "n/a"})
                         </p>
+                        <p className="text-sm">
+                          <strong>Artist:</strong> {acquisition.artworkId?.artistDisplayName ?? "n/a"}
+                        </p>
                         <div className="mt-2 flex flex-wrap gap-2">
-                          {normalizedStatus !== "approved" &&
-                            normalizedStatus !== "acquired" && (
-                              <button
-                                type="button"
-                                className="ui-btn-secondary btn-sm"
-                                disabled={updatingId === acquisition._id}
-                                onClick={() => updateStatus(acquisition, "approved")}
-                              >
-                                Approve
-                              </button>
-                            )}
+                          {canApprove && (
+                            <button
+                              type="button"
+                              className="ui-btn-secondary btn-sm min-w-24"
+                              disabled={updatingId === acquisition._id}
+                              onClick={() => updateStatus(acquisition, "approved")}
+                            >
+                              Approve
+                            </button>
+                          )}
+
                           <button
                             type="button"
                             className="ui-btn-secondary btn-sm"
-                            disabled={
-                              updatingId === acquisition._id || normalizedStatus !== "approved"
-                            }
+                            disabled={updatingId === acquisition._id || !canAcquire}
                             onClick={() => updateStatus(acquisition, "acquired")}
                           >
                             Mark Acquired
                           </button>
+
+                          {canReject && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-error min-w-24"
+                              disabled={updatingId === acquisition._id}
+                              onClick={() => updateStatus(acquisition, "rejected")}
+                            >
+                              Reject
+                            </button>
+                          )}
+
                           <button
                             type="button"
-                            className="btn btn-sm btn-error"
+                            className="btn btn-sm btn-outline"
                             disabled={deletingId === acquisition._id}
                             onClick={() => removeAcquisition(acquisition)}
                           >

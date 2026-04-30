@@ -5,7 +5,8 @@ export default function SurfaceCard({
   subtitle,
   children,
   className = "",
-  tone = "light"
+  tone = "light",
+  ...rest
 }) {
   const toneClass =
     tone === "dark"
@@ -15,7 +16,10 @@ export default function SurfaceCard({
     tone === "dark" ? "text-neutral-content/70" : "text-base-content/70";
 
   return (
-    <section className={joinClasses("surface-card section-enter p-4 md:p-6", toneClass, className)}>
+    <section
+      className={joinClasses("surface-card section-enter p-4 md:p-6", toneClass, className)}
+      {...rest}
+    >
       {(title || subtitle) && (
         <div className="mb-4">
           {title && <h2 className="section-title">{title}</h2>}

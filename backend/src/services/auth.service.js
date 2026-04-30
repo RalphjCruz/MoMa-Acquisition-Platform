@@ -46,7 +46,29 @@ const parseDisplayName = (value) => {
   return displayName;
 };
 
-const parsePassword = (value) => {
+const parseUsername = (value) => {
+  const username = normalizeText(value, "");
+  if (!username) {
+    throw createServiceError(
+      400,
+      "VALIDATION_ERROR",
+      "username is required and cannot be empty."
+    );
+  }
+
+  const usernameRegex = /^[a-zA-Z0-9_.-]{3,30}$/;
+  if (!usernameRegex.test(username)) {
+    throw createServiceError(
+      400,
+      "VALIDATION_ERROR",
+      "username must be 3-30 characters and use letters, numbers, dot, underscore or hyphen."
+    );
+  }
+
+  return username;
+};
+
+const parseStrongPassword = (value) => {
   const password = normalizeText(value, "");
   if (password.length < 8) {
     throw createServiceError(
@@ -55,6 +77,36 @@ const parsePassword = (value) => {
       "password must be at least 8 characters."
     );
   }
+
+  if (!/[A-Z]/.test(password)) {
+    throw createServiceError(
+      400,
+      "VALIDATION_ERROR",
+      "password must include at least one uppercase letter."
+    );
+  }
+
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    throw createServiceError(
+      400,
+      "VALIDATION_ERROR",
+      "password must include at least one special character."
+    );
+  }
+
+  return password;
+};
+
+const parseLoginPassword = (value) => {
+  const password = normalizeText(value, "");
+  if (!password) {
+    throw createServiceError(
+      400,
+      "VALIDATION_ERROR",
+      "password is required and cannot be empty."
+    );
+  }
+
   return password;
 };
 
@@ -73,6 +125,7 @@ const parseRole = (value, fallback = "buyer") => {
 
 const sanitizeUser = (user) => ({
   _id: user._id,
+  username: user.username,
   displayName: user.displayName,
   email: user.email,
   role: user.role,
@@ -101,20 +154,29 @@ const register = async (payload) => {
   }
 
   const email = parseEmail(payload.email);
-  const displayName = parseDisplayName(payload.displayName);
-  const password = parsePassword(payload.password);
+  const username = parseUsername(payload.username ?? payload.displayName);
+  const displayName = parseDisplayName(payload.displayName ?? payload.username);
+  const password = parseStrongPassword(payload.password);
   const role = parseRole(payload.role, "buyer");
 
-  const existing = await User.findOne({ email });
+  const existing = await User.findOne({ $or: [{ email }, { username }] });
   if (existing) {
+    if (existing.email === email) {
+      throw createServiceError(
+        409,
+        "DUPLICATE_EMAIL",
+        `User with email ${email} already exists.`
+      );
+    }
+
     throw createServiceError(
       409,
-      "DUPLICATE_EMAIL",
-      `User with email ${email} already exists.`
+      "DUPLICATE_USERNAME",
+      `Username ${username} is already in use.`
     );
   }
 
-  const user = await User.create({ email, displayName, role });
+  const user = await User.create({ username, email, displayName, role });
   const passwordHash = await bcrypt.hash(password, 12);
   await AuthCredential.create({ userId: user._id, passwordHash });
 
@@ -132,7 +194,7 @@ const login = async (payload) => {
   }
 
   const email = parseEmail(payload.email);
-  const password = parsePassword(payload.password);
+  const password = parseLoginPassword(payload.password);
 
   const user = await User.findOne({ email });
   if (!user) {

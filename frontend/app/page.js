@@ -7,7 +7,6 @@ import { useCart } from "./components/CartProvider";
 import StickyHeader from "./components/StickyHeader";
 import AppShell from "./components/ui/AppShell";
 import InlineAlert from "./components/ui/InlineAlert";
-import StatsGrid from "./components/ui/StatsGrid";
 import SurfaceCard from "./components/ui/SurfaceCard";
 import {
   apiBaseUrl,
@@ -16,7 +15,7 @@ import {
   readErrorMessage
 } from "./lib/api";
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 18;
 
 const SearchIcon = () => (
   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -31,6 +30,22 @@ const FilterIcon = () => (
   </svg>
 );
 
+const resolveArtworkYear = (item) => {
+  const fromText = String(item?.dateText ?? "").match(/\b(18|19|20)\d{2}\b/);
+  if (fromText) {
+    return fromText[0];
+  }
+
+  if (item?.dateAcquired) {
+    const parsed = new Date(item.dateAcquired);
+    if (!Number.isNaN(parsed.getTime())) {
+      return String(parsed.getFullYear());
+    }
+  }
+
+  return "Unknown";
+};
+
 const emptyCreateArtworkForm = {
   objectId: "",
   title: "",
@@ -42,8 +57,8 @@ const emptyCreateArtworkForm = {
 };
 
 export default function ArtworksPage() {
-  const { ready, token, isBuyer, isManager, isAuthenticated } = useAuth();
-  const { addItem, hasItem, totalItems } = useCart();
+  const { ready, token, isBuyer, isManager } = useAuth();
+  const { addItem, hasItem } = useCart();
 
   const [search, setSearch] = useState("");
   const [draftSearch, setDraftSearch] = useState("");
@@ -54,7 +69,7 @@ export default function ArtworksPage() {
   const [sortBy, setSortBy] = useState("title");
   const [order, setOrder] = useState("asc");
   const [page, setPage] = useState(1);
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [items, setItems] = useState([]);
   const [pagination, setPagination] = useState({
@@ -112,15 +127,6 @@ export default function ArtworksPage() {
     }
     return items.filter((item) => !hasItem(item._id) && !requestArtworkIds.has(item._id));
   }, [isBuyer, items, hasItem, requestArtworkIds]);
-
-  const catalogueStats = useMemo(
-    () => [
-      { label: "Visible", value: visibleItems.length, tone: "primary" },
-      { label: "Total (Page)", value: items.length, tone: "info" },
-      { label: "Cart", value: totalItems, tone: "success" }
-    ],
-    [visibleItems.length, items.length, totalItems]
-  );
 
   const activeArtwork = useMemo(
     () => items.find((item) => item._id === activeArtworkId) || null,
@@ -360,24 +366,7 @@ export default function ArtworksPage() {
   return (
     <>
       <StickyHeader active="artworks" />
-      <AppShell>
-        <SurfaceCard className="!border-[#d9c7ad]/70 !bg-base-100/76">
-          <h1 className="text-3xl font-bold tracking-tight">Artwork Catalogue</h1>
-          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-base-content/80">
-            Managers can edit/remove artworks. Buyers can add artworks to cart.
-          </p>
-          {ready && isBuyer && <p className="mt-2 text-sm">Cart items: {totalItems}</p>}
-          {ready && !isAuthenticated && (
-            <p className="mt-2 text-sm">Login as buyer or manager to unlock actions.</p>
-          )}
-          <InlineAlert message={actionError} tone="error" className="mt-3" />
-          <InlineAlert message={actionMessage} tone="success" className="mt-3" />
-          <InlineAlert message={error} tone="error" className="mt-3" />
-          <div className="mt-3">
-            <StatsGrid items={catalogueStats} />
-          </div>
-        </SurfaceCard>
-
+      <AppShell fluid>
         {isManager && (
           <SurfaceCard title="Create Artwork">
             <form className="grid gap-2 md:grid-cols-3" onSubmit={handleCreate}>
@@ -459,7 +448,41 @@ export default function ArtworksPage() {
           </SurfaceCard>
         )}
 
-        <SurfaceCard className="!border-[#d9c7ad]/70 !bg-base-100/72">
+        <section className="section-enter overflow-hidden rounded-xl border border-black/10 bg-[#E6DFD2] shadow-sm">
+          <div className="relative h-44 w-full overflow-hidden sm:h-56 md:h-64 lg:h-72">
+            <img
+              src="/Moma-highres.jpg"
+              alt="MoMA gallery visitors"
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          </div>
+
+          <div className="grid gap-4 px-4 py-5 md:grid-cols-[1fr_auto] md:items-end md:px-6 md:py-6">
+            <div>
+              <h2 className="text-4xl font-bold leading-none tracking-tight md:text-6xl">Welcome</h2>
+              <p className="mt-2 text-lg font-semibold md:text-2xl">
+                Explore, review, and acquire artworks through the platform.
+              </p>
+            </div>
+            <div className="md:text-right">
+              <p className="text-sm md:text-base">
+                Search the collection and submit buyer requests for manager approval.
+              </p>
+              <a href="#catalogue-controls" className="ui-btn-primary mt-3 inline-flex">
+                Start Browsing
+              </a>
+            </div>
+          </div>
+
+          <div className="mx-4 mb-4 border-t border-black/70 md:mx-6" />
+        </section>
+
+        <SurfaceCard id="catalogue-controls" className="!border-black/10 !bg-[#E6DFD2]">
+          <InlineAlert message={actionError} tone="error" className="mb-3" />
+          <InlineAlert message={actionMessage} tone="success" className="mb-3" />
+          <InlineAlert message={error} tone="error" className="mb-3" />
+
           <form
             className="grid gap-3"
             onSubmit={(event) => {
@@ -631,69 +654,71 @@ export default function ArtworksPage() {
           </form>
         </SurfaceCard>
 
-        <section className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <section className="section-enter rounded-2xl p-2 sm:p-3 md:p-4">
           {loading &&
             Array.from({ length: 6 }).map((_, index) => (
-              <div key={`skeleton-${index}`} className="surface-card border border-base-200/70 p-4">
+              <div
+                key={`skeleton-${index}`}
+                className="mb-20 break-inside-avoid rounded-lg border border-black/10 bg-[#B7B0A4] p-2"
+              >
+                <div className="skeleton mb-2 h-48 w-full" />
                 <div className="skeleton mb-2 h-5 w-3/4" />
-                <div className="skeleton mb-2 h-4 w-2/3" />
                 <div className="skeleton mb-2 h-4 w-1/2" />
-                <div className="skeleton h-8 w-24" />
+                <div className="skeleton h-4 w-1/4" />
               </div>
             ))}
-          {!loading &&
-            visibleItems.map((item, index) => {
-              const isDark = index % 2 === 0;
-              const cardToneClass = isDark
-                ? "!border-black/80 !bg-black/95 !text-white"
-                : "!border-white/90 !bg-white/95 !text-black";
-              const emptyToneClass = isDark ? "text-white/70" : "text-base-content/70";
-              const titleToneClass = isDark ? "text-white" : "text-black";
-              const priceToneClass = isDark ? "text-white/80" : "text-black/80";
-
-              return (
+          {!loading && (
+            <div className="columns-1 gap-20 sm:columns-2 md:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5">
+              {visibleItems.map((item) => (
                 <article
                   key={item._id}
-                className={`card surface-card surface-card-hover h-[22rem] self-start border transition-all duration-300 ${cardToneClass}`}
-              >
+                  className="group mb-20 break-inside-avoid overflow-hidden rounded-md border border-black/10 bg-[#B7B0A4] text-black shadow-sm transition-transform duration-200 hover:-translate-y-0.5"
+                >
                   <button
                     type="button"
-                    className="card-body h-full cursor-pointer p-4 text-left"
+                    className="w-full cursor-pointer text-left"
                     onClick={() => openArtworkModal(item)}
                     aria-label={`Open details for ${item.title || "Untitled"}`}
                   >
-                    <div className="h-56 w-full overflow-hidden rounded-lg bg-base-200">
+                    <div className="w-full overflow-hidden bg-zinc-700">
                       {item.imageUrl ? (
                         <img
                           src={item.imageUrl}
                           alt={`Artwork preview: ${item.title || "Untitled"}`}
-                          className="h-full w-full object-cover"
+                          className="h-auto w-full transition-transform duration-300 group-hover:scale-[1.015]"
                           loading="lazy"
                           referrerPolicy="no-referrer"
                         />
                       ) : (
-                        <div className={`flex h-full w-full items-center justify-center text-xs ${emptyToneClass}`}>
+                        <div className="flex aspect-[4/5] w-full items-center justify-center bg-zinc-800 text-xs text-white/70">
                           No image available
                         </div>
                       )}
                     </div>
-                    <h3 className={`card-title mt-2 line-clamp-2 text-lg ${titleToneClass}`}>
-                      {item.title || "Untitled"}
-                    </h3>
-                    <p className={`text-sm font-medium ${priceToneClass}`}>
-                      ${Number(item.price ?? 0).toFixed(2)}
-                    </p>
+
+                    <div className="px-2.5 pb-2 pt-2">
+                      <h3 className="line-clamp-3 text-xl font-semibold leading-tight tracking-tight text-black sm:text-2xl">
+                        {item.title || "Untitled"}
+                      </h3>
+                      <p className="mt-0.5 line-clamp-1 text-sm font-semibold text-black/90">
+                        {item.artistDisplayName || "Unknown artist"}
+                      </p>
+                      <p className="text-sm text-black/70">{resolveArtworkYear(item)}</p>
+                    </div>
                   </button>
                 </article>
-              );
-            })}
+              ))}
+            </div>
+          )}
         </section>
 
         {activeArtwork && (
           <div className="modal modal-open p-2 sm:p-4" role="dialog" aria-modal="true">
             <div className="modal-box modal-pop w-full max-w-2xl p-4 sm:p-6">
               <div className="mb-3 flex items-start justify-between gap-3">
-                <h3 className="text-xl font-semibold text-black">{activeArtwork.title || "Untitled"}</h3>
+                <h3 className="text-3xl font-semibold leading-tight text-black">
+                  {activeArtwork.title || "Untitled"}
+                </h3>
                 <button type="button" className="btn btn-sm btn-circle" onClick={closeArtworkModal}>
                   x
                 </button>
@@ -867,7 +892,7 @@ export default function ArtworksPage() {
           </SurfaceCard>
         )}
 
-        <SurfaceCard tone="light">
+        <SurfaceCard className="!border-black/10 !bg-[#E6DFD2]">
           <div className="grid grid-cols-[auto,1fr,auto] items-center gap-2">
             <button
               type="button"
@@ -878,7 +903,7 @@ export default function ArtworksPage() {
               First
             </button>
 
-            <div className="grid min-w-0 grid-cols-[auto,1fr,auto] items-center gap-1 sm:gap-2">
+            <div className="flex min-w-0 items-center justify-center gap-2 sm:gap-3">
               <button
                 type="button"
                 className="ui-btn-secondary btn-sm"

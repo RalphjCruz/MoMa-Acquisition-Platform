@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { useAuth } from "./AuthProvider";
 import { useCart } from "./CartProvider";
@@ -24,11 +25,19 @@ const CartIcon = () => (
 );
 
 export default function StickyHeader({ active }) {
+  const router = useRouter();
   const { user, isAuthenticated, isManager, isBuyer, logout } = useAuth();
   const { items, totalItems, removeItem, clearCart, submitPendingPurchase } = useCart();
   const [cartMessage, setCartMessage] = useState("");
   const [cartError, setCartError] = useState("");
   const [cartLoading, setCartLoading] = useState(false);
+
+  const isAuthRegister = active === "auth-register";
+  const isAuthLogin = active === "auth";
+  const loginButtonClass =
+    isAuthRegister ? "ui-btn-secondary btn-sm" : "ui-btn-primary btn-sm";
+  const registerButtonClass =
+    isAuthRegister ? "ui-btn-primary btn-sm" : "ui-btn-secondary btn-sm";
 
   const navItems = useMemo(() => {
     const base = [{ key: "artworks", href: "/", label: "Artwork Catalogue" }];
@@ -68,8 +77,8 @@ export default function StickyHeader({ active }) {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/30 bg-base-100/88 shadow-sm backdrop-blur-md">
-      <div className="navbar mx-auto max-w-6xl px-2 sm:px-3 md:px-4">
+    <header className="sticky top-0 z-40 border-b border-black/10 bg-[#E6DFD2] shadow-sm">
+      <div className="navbar w-full px-2 sm:px-3 md:px-5">
         <div className="navbar-start gap-2">
           <div className="dropdown md:hidden">
             <button type="button" tabIndex={0} className="btn btn-ghost btn-sm" aria-label="Menu">
@@ -93,9 +102,17 @@ export default function StickyHeader({ active }) {
               </li>
             </ul>
           </div>
-          <Link href="/" className="text-xs font-semibold tracking-wide md:text-sm">
-            <span className="sm:hidden">MoMA Platform</span>
-            <span className="hidden sm:inline">MoMA Acquisition Platform</span>
+          <Link
+            href="/"
+            aria-label="Go to Artwork Catalogue"
+            className="text-lg font-semibold tracking-wide md:text-3xl"
+            onClick={(event) => {
+              event.preventDefault();
+              router.push("/");
+            }}
+          >
+            <span className="sm:hidden">MoMAFlow</span>
+            <span className="hidden sm:inline">MoMAFlow</span>
           </Link>
         </div>
 
@@ -169,16 +186,51 @@ export default function StickyHeader({ active }) {
               <span className="hidden text-xs md:inline">
                 {user.displayName} ({user.role === "admin" ? "manager" : user.role})
               </span>
-              <button type="button" className="ui-btn-secondary btn-sm" onClick={logout}>
+              <button
+                type="button"
+                className="ui-btn-secondary btn-sm"
+                onClick={() => {
+                  logout();
+                  router.push("/");
+                }}
+              >
                 Logout
               </button>
             </>
           ) : (
             <>
-              <Link className="ui-btn-primary btn-sm" href="/auth?mode=login">
+              <Link
+                className={loginButtonClass}
+                href="/auth?mode=login"
+                onClick={(event) => {
+                  if (typeof window === "undefined") {
+                    return;
+                  }
+                  if (isAuthRegister) {
+                    event.preventDefault();
+                    window.dispatchEvent(
+                      new CustomEvent("auth-mode-change", { detail: "login" })
+                    );
+                  }
+                }}
+              >
                 Login
               </Link>
-              <Link className="ui-btn-secondary btn-sm" href="/auth?mode=register">
+              <Link
+                className={registerButtonClass}
+                href="/auth?mode=register"
+                onClick={(event) => {
+                  if (typeof window === "undefined") {
+                    return;
+                  }
+                  if (isAuthLogin) {
+                    event.preventDefault();
+                    window.dispatchEvent(
+                      new CustomEvent("auth-mode-change", { detail: "register" })
+                    );
+                  }
+                }}
+              >
                 Register
               </Link>
             </>

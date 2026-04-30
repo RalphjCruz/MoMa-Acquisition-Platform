@@ -1,7 +1,7 @@
 {
   "name": "moma-acquisition-platform-backend",
   "version": "0.1.0",
-  "description": "Backend API for the MoMA Acquisition Intelligence Platform",
+  "description": "Backend API for MoMAFlow",
   "main": "src/server.js",
   "type": "commonjs",
   "scripts": {
