@@ -12,6 +12,7 @@
         --ink: #111111;
         --muted: #3d3d3d;
         --line: #b7b0a4;
+        --accent: #6b4f32;
       }
 
       * {
@@ -26,7 +27,7 @@
       }
 
       main {
-        max-width: 1000px;
+        max-width: 1050px;
         margin: 28px auto;
         padding: 24px;
         background: var(--surface);
@@ -42,6 +43,11 @@
       h2 {
         margin: 0 0 10px;
         font-size: 1.2rem;
+      }
+
+      h3 {
+        margin: 0 0 8px;
+        font-size: 1rem;
       }
 
       p,
@@ -62,19 +68,21 @@
         font-size: 0.75rem;
         font-weight: 700;
         margin: 0 0 4px;
+        color: var(--accent);
       }
 
-      .card {
+      .card,
+      .listCard {
         background: var(--card);
         border: 1px solid var(--line);
         border-radius: 10px;
-        padding: 12px;
+        padding: 14px;
       }
 
       .grid {
         display: grid;
         gap: 10px;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
       }
 
       code {
@@ -83,32 +91,178 @@
         border-radius: 5px;
         padding: 1px 5px;
       }
+
+      .diagram {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .diagramBox {
+        background: #f8f3ea;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px;
+        text-align: center;
+        position: relative;
+      }
+
+      .diagramBox strong {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--ink);
+      }
+
+      .badge {
+        display: inline-block;
+        background: #ece6da;
+        border: 1px solid #cfc6b6;
+        border-radius: 999px;
+        padding: 4px 9px;
+        margin: 4px 4px 0 0;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .ctaRow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .ctaRow a {
+        display: inline-block;
+        background: var(--ink);
+        color: #fff;
+        text-decoration: none;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+      }
+
+      .ctaRow a:hover {
+        background: var(--accent);
+      }
+
+      .note {
+        font-size: 0.95rem;
+        background: #fff7e8;
+        border-left: 4px solid var(--accent);
+        padding: 10px 12px;
+        border-radius: 6px;
+      }
     </style>
   </head>
+
   <body>
     <main>
       <p class="eyebrow">About This Page</p>
       <h1>MoMAFlow</h1>
+
       <p>
         This page is served by the backend at <code>/about</code>. It documents the current assignment build,
-        including architecture, workflows, roles, and implemented constraints.
+        including how the application works, the technologies used, the main workflows, known limitations,
+        and alternative approaches that could have been used.
       </p>
+
+      <section>
+        <h2>General Explanation</h2>
+        <div class="card">
+          <p>
+            MoMAFlow is a full-stack artwork marketplace application based on a Museum of Modern Art style
+            catalogue. Users can browse artworks, search and filter the catalogue, manage artwork records,
+            and use role-based workflows depending on whether they are acting as a buyer or manager.
+          </p>
+
+          <p>
+            The frontend sends HTTP requests to the backend API. The backend handles validation, business logic,
+            authentication, and database operations. MongoDB stores the main application data such as artworks,
+            users, credentials, and acquisition requests.
+          </p>
+        </div>
+
+        <div class="diagram">
+          <div class="diagramBox">
+            <strong>Client Browser</strong>
+            Next.js UI pages, forms, filters, cart, and role-specific screens.
+          </div>
+
+          <div class="diagramBox">
+            <strong>REST API</strong>
+            Express routes receive requests such as GET, POST, PATCH, and DELETE.
+          </div>
+
+          <div class="diagramBox">
+            <strong>Business Logic</strong>
+            Validation, role checks, catalogue rules, and acquisition workflow handling.
+          </div>
+
+          <div class="diagramBox">
+            <strong>MongoDB</strong>
+            Stores artworks, users, credentials, carts, and acquisition records.
+          </div>
+        </div>
+      </section>
 
       <section>
         <h2>Architecture Overview</h2>
         <div class="grid">
           <div class="card">
-            <strong>Frontend (Next.js)</strong>
-            <p>Catalogue, filters, auth, cart, buyer requests, manager tracking.</p>
+            <strong>Frontend</strong>
+            <p>
+              Built with Next.js. It provides the user interface for browsing artworks, filtering the catalogue,
+              logging in, registering, managing carts, and viewing role-based features.
+            </p>
           </div>
+
           <div class="card">
-            <strong>API (Node.js + Express)</strong>
-            <p>REST routes for artworks, auth, users, and acquisitions.</p>
+            <strong>API</strong>
+            <p>
+              Built with Node.js and Express. It exposes RESTful endpoints for artworks, users, authentication,
+              and acquisition workflows.
+            </p>
           </div>
+
           <div class="card">
-            <strong>Database (MongoDB)</strong>
-            <p>Mongoose models for artworks, users, credentials, and acquisitions.</p>
+            <strong>Database</strong>
+            <p>
+              MongoDB is used with Mongoose models to structure and manage data for artworks, users,
+              credentials, and acquisition records.
+            </p>
           </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Technologies Used</h2>
+        <div class="card">
+          <p>
+            The project uses a modern JavaScript full-stack structure with a separate frontend and backend.
+            This makes the application easier to test, explain, and extend.
+          </p>
+
+          <span class="badge">Next.js</span>
+          <span class="badge">React</span>
+          <span class="badge">Node.js</span>
+          <span class="badge">Express</span>
+          <span class="badge">MongoDB</span>
+          <span class="badge">Mongoose</span>
+          <span class="badge">REST API</span>
+          <span class="badge">JWT Authentication</span>
+          <span class="badge">HTML</span>
+          <span class="badge">CSS</span>
+          <span class="badge">JavaScript</span>
+
+          <ul>
+            <li><strong>Next.js/React:</strong> used to build the interactive client-side interface.</li>
+            <li><strong>Node.js:</strong> used as the JavaScript runtime for the backend server.</li>
+            <li><strong>Express:</strong> used to define clear REST routes and backend middleware.</li>
+            <li><strong>MongoDB:</strong> used as the NoSQL database for flexible artwork and user data.</li>
+            <li><strong>Mongoose:</strong> used to define schemas and interact with MongoDB more safely.</li>
+            <li><strong>JWT:</strong> used to support login sessions and protect role-specific routes.</li>
+          </ul>
         </div>
       </section>
 
@@ -116,9 +270,18 @@
         <h2>Role Workflows</h2>
         <div class="card">
           <ul>
-            <li><strong>Buyer:</strong> browse catalog, add to cart, submit pending purchase requests, view request status.</li>
-            <li><strong>Manager (as admin):</strong> manage artworks (create/update/delete), review users, approve/acquire requests.</li>
-            <li>Catalog excludes items that are already in buyer cart, in requests, or already acquired.</li>
+            <li>
+              <strong>Buyer:</strong> can browse the artwork catalogue, search/filter items, add artworks to a cart,
+              submit pending purchase requests, and view the status of submitted requests.
+            </li>
+            <li>
+              <strong>Manager/Admin:</strong> can manage artworks using CRUD operations, review users,
+              view pending acquisition requests, and approve or complete acquisition workflows.
+            </li>
+            <li>
+              <strong>Catalogue rules:</strong> artworks that are already in a buyer cart, already requested,
+              or already acquired can be excluded from the available catalogue to avoid duplicate purchase actions.
+            </li>
           </ul>
         </div>
       </section>
@@ -127,25 +290,37 @@
         <h2>Auth & Validation</h2>
         <div class="card">
           <ul>
-            <li>JWT login/register with role-based route protection.</li>
-            <li>Registration requires username, email, role, and password.</li>
-            <li>Password rules: minimum 8 chars, at least one uppercase, at least one special character.</li>
-            <li>Register UI includes confirm-password validation.</li>
+            <li>JWT login and registration are used for authenticated access.</li>
+            <li>Role-based route protection separates buyer features from manager/admin features.</li>
+            <li>Registration requires username, email, role, password, and confirm password.</li>
+            <li>Password rules require at least 8 characters, one uppercase letter, and one special character.</li>
+            <li>Frontend validation improves user experience before data is sent to the backend.</li>
+            <li>Backend validation protects the API from invalid or incomplete requests.</li>
           </ul>
         </div>
       </section>
 
       <section>
-        <h2>REST Endpoints (Core)</h2>
+        <h2>REST Endpoints</h2>
         <div class="card">
           <p>
-            <code>/api/auth</code>, <code>/api/artworks</code>, <code>/api/users</code>,
+            The application is built around RESTful services. The main route groups are:
+          </p>
+
+          <p>
+            <code>/api/auth</code>,
+            <code>/api/artworks</code>,
+            <code>/api/users</code>,
             <code>/api/acquisitions</code>
           </p>
+
           <ul>
-            <li>Artwork CRUD + search/sort/filter/pagination.</li>
-            <li>Acquisition status flow with manager-controlled approvals.</li>
-            <li>User listing/profile endpoints for manager view.</li>
+            <li><strong>Create:</strong> add new artwork records or acquisition requests.</li>
+            <li><strong>Read:</strong> retrieve artworks, users, request statuses, and catalogue data.</li>
+            <li><strong>Update:</strong> edit existing artworks and update acquisition statuses.</li>
+            <li><strong>Delete:</strong> remove artwork records where permitted.</li>
+            <li><strong>Search/filter/sort:</strong> supports easier catalogue navigation and testing.</li>
+            <li><strong>Pagination:</strong> prevents the interface from trying to load the entire dataset at once.</li>
           </ul>
         </div>
       </section>
@@ -154,10 +329,117 @@
         <h2>Assignment Alignment</h2>
         <div class="card">
           <ul>
-            <li>Node.js/Express server with REST services.</li>
-            <li>React/Next.js client for testing and consuming all services.</li>
-            <li>MongoDB persistence using Mongoose models.</li>
-            <li>Full CRUD on artworks plus advanced features (search/filter/sort/pagination, role workflows, validation, responsive UI).</li>
+            <li>Uses a Node.js/Express backend server.</li>
+            <li>Loads and manages an artwork catalogue through backend services.</li>
+            <li>Stores application data using MongoDB and Mongoose models.</li>
+            <li>Implements RESTful API endpoints for client-server communication.</li>
+            <li>Supports artwork Create, Read, Update, and Delete operations.</li>
+            <li>Provides a client interface that allows users to test the main REST services.</li>
+            <li>Adds extra features such as role workflows, authentication, filtering, sorting, pagination, cart logic, and acquisition tracking.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section>
+        <h2>Main Limitations / Weaknesses</h2>
+        <div class="listCard">
+          <ul>
+            <li>
+              <strong>Not fully production hardened:</strong> the application is suitable for assignment demonstration,
+              but a real production system would need stronger logging, monitoring, deployment security, and error recovery.
+            </li>
+
+            <li>
+              <strong>Limited payment functionality:</strong> the buyer workflow simulates acquisition requests, but it does not
+              integrate a real payment provider such as Stripe or PayPal.
+            </li>
+
+            <li>
+              <strong>Basic role model:</strong> roles such as buyer and manager are implemented, but a real enterprise system
+              would need more detailed permissions, audit logs, and possibly multiple admin levels.
+            </li>
+
+            <li>
+              <strong>Dataset performance:</strong> for very large datasets of 10,000+ artworks, additional indexing,
+              query tuning, and caching may be needed to keep search and filtering fast.
+            </li>
+
+            <li>
+              <strong>Limited testing coverage:</strong> the app can be manually tested through the interface and API routes,
+              but a stronger version would include automated unit tests, integration tests, and end-to-end tests.
+            </li>
+
+            <li>
+              <strong>Simple UI state handling:</strong> the current interface is designed for clarity and demonstration.
+              A larger system may need more advanced state management for carts, sessions, filters, and request updates.
+            </li>
+
+            <li>
+              <strong>Authentication could be stronger:</strong> JWT authentication is implemented, but a production system
+              would also need refresh-token handling, account lockout, password reset, email verification, and stronger session security.
+            </li>
+
+            <li>
+              <strong>Concurrency issues:</strong> if two users try to request or acquire the same artwork at the same time,
+              the system would need stricter transaction logic to guarantee that the artwork is only acquired once.
+            </li>
+
+            <li>
+              <strong>Deployment limitations:</strong> the assignment version is mainly built for local demonstration.
+              A live hosted version would need environment variables, secure database hosting, HTTPS, and production build configuration.
+            </li>
+          </ul>
+        </div>
+
+      
+      </section>
+
+      <section>
+        <h2>Alternative Approaches</h2>
+        <div class="card">
+          <p>
+            This project uses a Next.js frontend with a separate Express backend because it makes the REST API structure
+            clear. However, the same application could have been built using other approaches.
+          </p>
+        </div>
+
+        <div class="listCard">
+          <ul>
+            <li>
+              <strong>Next.js API routes only:</strong> the backend logic could have been implemented directly inside Next.js
+              API routes. This would reduce the number of separate project layers, but it may make the backend structure less explicit
+              for demonstrating REST architecture.
+            </li>
+
+            <li>
+              <strong>PostgreSQL instead of MongoDB:</strong> a relational database could provide stronger structure for users,
+              purchases, carts, and acquisition records. This would be useful if the project needed strict relationships and transactions.
+            </li>
+
+            <li>
+              <strong>Session-based authentication:</strong> instead of JWT, the app could use server-side sessions or a library
+              such as Auth.js/NextAuth. This could simplify secure login handling, but may add more framework-specific setup.
+            </li>
+
+            <li>
+              <strong>GraphQL instead of REST:</strong> GraphQL could allow the frontend to request only the exact data it needs.
+              However, REST is simpler to demonstrate and better matches the assignment requirement for RESTful endpoints.
+            </li>
+
+            <li>
+              <strong>Redis caching:</strong> frequent search and filter results could be cached using Redis to reduce database load.
+              This would be more useful in a production-scale application with many users.
+            </li>
+
+            <li>
+              <strong>Cloud image storage:</strong> artwork images could be stored using services such as Cloudinary, AWS S3,
+              or Firebase Storage. This would improve image delivery and reliability compared with basic local/static image handling.
+            </li>
+
+            <li>
+              <strong>Full deployment pipeline:</strong> the frontend could be deployed to Vercel, the backend to Render/Railway,
+              and the database to MongoDB Atlas. This would make the app accessible online instead of only through localhost.
+            </li>
           </ul>
         </div>
       </section>

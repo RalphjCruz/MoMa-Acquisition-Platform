@@ -1,3 +1,8 @@
+## Deliverables information
+4 minute video found in zip folder
+Scripts found in this README for server-side scripts to run Node.js app
+about.html which contains  (located in backend\src\views\about.html)
+
 ## Ready-to-Run Setup
 
 This repository already includes default environment files:
