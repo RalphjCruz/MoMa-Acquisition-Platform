@@ -1,3 +1,133 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --vs-ink: #171717;
+  --vs-surface: rgba(245, 242, 235, 0.9);
+  --vs-accent: #be8a4e;
+  --vs-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
+  --vs-radius: 1rem;
+  --vs-input-height: 2.75rem;
+}
+
+[data-theme="coffee"] {
+  --vs-ink: #171717;
+  --vs-surface: rgba(245, 242, 235, 0.9);
+  --vs-accent: #be8a4e;
+  --vs-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  color: var(--vs-ink);
+  background: url("/Moma-highres.jpg") center / cover no-repeat;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.2), transparent 42%),
+    linear-gradient(170deg, rgba(17, 17, 17, 0.35), rgba(190, 138, 78, 0.2));
+  backdrop-filter: blur(2px);
+}
+
+.app-root {
+  position: relative;
+  z-index: 1;
+}
+
+.app-shell {
+  @apply mx-auto flex w-full max-w-6xl flex-col gap-5 px-3 pb-10 pt-5 sm:gap-6 sm:px-5 sm:pb-12 md:px-6;
+}
+
+.surface-card {
+  border-radius: var(--vs-radius);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: var(--vs-surface);
+  box-shadow: var(--vs-shadow);
+  backdrop-filter: blur(8px);
+}
+
+.surface-card-hover {
+  @apply transition-all duration-300 ease-out hover:-translate-y-1;
+}
+
+.section-title {
+  @apply text-xl font-semibold tracking-tight;
+}
+
+.muted-text {
+  @apply text-sm leading-relaxed;
+  color: color-mix(in srgb, var(--vs-ink) 70%, transparent);
+}
+
+.ui-btn-primary {
+  @apply btn border-0 text-white;
+  background-color: var(--vs-accent);
+}
+
+.ui-btn-primary:hover {
+  background-color: color-mix(in srgb, var(--vs-accent) 86%, black);
+}
+
+.ui-btn-secondary {
+  @apply btn btn-outline;
+  border-color: color-mix(in srgb, var(--vs-ink) 35%, transparent);
+  color: var(--vs-ink);
+}
+
+.ui-input,
+.ui-select {
+  height: var(--vs-input-height);
+}
+
+.section-enter {
+  animation: section-fade-in 380ms ease-out;
+}
+
+.modal-pop {
+  animation: modal-pop-in 220ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.icon-chip {
+  @apply inline-flex items-center gap-2 text-sm font-medium;
+}
+
+@keyframes section-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modal-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 640px) {
+  .ui-btn-primary,
+  .ui-btn-secondary {
+    @apply btn-sm;
+  }
+}

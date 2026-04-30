@@ -34,6 +34,12 @@ const normalizeText = (value, fallback = "") => {
   return asString || fallback;
 };
 
+const derivePlaceholderPrice = (objectId) => {
+  const whole = 100 + (objectId % 9000);
+  const cents = (objectId * 17) % 100;
+  return Math.round((whole + cents / 100) * 100) / 100;
+};
+
 const normalizeArtwork = (item) => {
   const objectId = Number(item.ObjectID);
 
@@ -48,6 +54,8 @@ const normalizeArtwork = (item) => {
   return {
     objectId,
     title: normalizeText(item.Title, "Untitled"),
+    imageUrl: normalizeText(item.ImageURL, ""),
+    price: derivePlaceholderPrice(objectId),
     artistDisplayName: normalizeText(item.Artist, "Unknown Artist"),
     department: normalizeText(item.Department, "Unknown"),
     classification: normalizeText(item.Classification, "Unknown"),

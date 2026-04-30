@@ -14,6 +14,8 @@ const MAX_LIMIT = 100;
 const CREATE_ALLOWED_FIELDS = new Set([
   "objectId",
   "title",
+  "imageUrl",
+  "price",
   "artistDisplayName",
   "department",
   "classification",
@@ -27,6 +29,8 @@ const CREATE_ALLOWED_FIELDS = new Set([
 
 const UPDATE_ALLOWED_FIELDS = new Set([
   "title",
+  "imageUrl",
+  "price",
   "artistDisplayName",
   "department",
   "classification",
@@ -89,6 +93,60 @@ const parseRequiredTitle = (value) => {
   }
 
   return title;
+};
+
+const derivePlaceholderPrice = (objectId) => {
+  const whole = 100 + (objectId % 9000);
+  const cents = (objectId * 17) % 100;
+  return Math.round((whole + cents / 100) * 100) / 100;
+};
+
+const parseOptionalImageUrl = (value) => {
+  const normalized = normalizeText(value, "");
+  if (!normalized) {
+    return "";
+  }
+
+  let parsed = null;
+  try {
+    parsed = new URL(normalized);
+  } catch (_error) {
+    throw createServiceError(
+      400,
+      "VALIDATION_ERROR",
+      "imageUrl must be a valid URL."
+    );
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw createServiceError(
+      400,
+      "VALIDATION_ERROR",
+      "imageUrl must start with http:// or https://."
+    );
+  }
+
+  return normalized;
+};
+
+const parsePrice = (value, fieldName) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw createServiceError(
+      400,
+      "VALIDATION_ERROR",
+      `${fieldName} must be a non-negative number.`
+    );
+  }
+
+  return Math.round(parsed * 100) / 100;
+};
+
+const parseOptionalQueryPrice = (value, fieldName) => {
+  if (value === undefined || value === null || String(value).trim() === "") {
+    return null;
+  }
+  return parsePrice(value, fieldName);
 };
 
 const parseOptionalDate = (value) => {
@@ -194,9 +252,16 @@ const validateCreateArtworkPayload = (payload) => {
     );
   }
 
+  const objectId = parseRequiredObjectId(payload.objectId);
+
   return {
-    objectId: parseRequiredObjectId(payload.objectId),
+    objectId,
     title: parseRequiredTitle(payload.title),
+    imageUrl: parseOptionalImageUrl(payload.imageUrl),
+    price:
+      payload.price === undefined || payload.price === null || String(payload.price).trim() === ""
+        ? derivePlaceholderPrice(objectId)
+        : parsePrice(payload.price, "price"),
     artistDisplayName: normalizeText(payload.artistDisplayName, "Unknown Artist"),
     department: normalizeText(payload.department, "Unknown"),
     classification: normalizeText(payload.classification, "Unknown"),
@@ -248,6 +313,14 @@ const validateUpdateArtworkPayload = (payload) => {
 
   if (Object.prototype.hasOwnProperty.call(payload, "title")) {
     updateData.title = parseRequiredTitle(payload.title);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "imageUrl")) {
+    updateData.imageUrl = parseOptionalImageUrl(payload.imageUrl);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "price")) {
+    updateData.price = parsePrice(payload.price, "price");
   }
 
   if (Object.prototype.hasOwnProperty.call(payload, "artistDisplayName")) {
@@ -339,6 +412,25 @@ const buildArtworkFilter = (query) => {
     ];
   }
 
+  const minPrice = parseOptionalQueryPrice(query.minPrice, "minPrice");
+  const maxPrice = parseOptionalQueryPrice(query.maxPrice, "maxPrice");
+  if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) {
+    throw createServiceError(
+      400,
+      "VALIDATION_ERROR",
+      "minPrice cannot be greater than maxPrice."
+    );
+  }
+  if (minPrice !== null || maxPrice !== null) {
+    filter.price = {};
+    if (minPrice !== null) {
+      filter.price.$gte = minPrice;
+    }
+    if (maxPrice !== null) {
+      filter.price.$lte = maxPrice;
+    }
+  }
+
   return filter;
 };
 
@@ -347,6 +439,7 @@ const resolveSort = (sortBy, order) => {
   const sortMap = {
     title: { title: direction },
     artist: { artistDisplayName: direction },
+    price: { price: direction },
     dateAcquired: { dateAcquired: direction },
     createdAt: { createdAt: direction }
   };

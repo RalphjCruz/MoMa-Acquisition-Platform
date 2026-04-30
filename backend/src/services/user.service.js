@@ -1,7 +1,5 @@
 const mongoose = require("mongoose");
 const User = require("../models/user.model");
-const Acquisition = require("../models/acquisition.model");
-const { ASSIGNABLE_ROLE_VALUES, normalizeRole } = require("../constants/roles");
 const {
   escapeRegex,
   normalizeSortOrder,
@@ -11,65 +9,11 @@ const {
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
-const USER_ALLOWED_FIELDS = new Set(["displayName", "email", "role"]);
 const createServiceError = (statusCode, code, message) => {
   const error = new Error(message);
   error.statusCode = statusCode;
   error.code = code;
   return error;
-};
-
-const normalizeText = (value, fallback = "") => {
-  if (value === undefined || value === null) {
-    return fallback;
-  }
-
-  const normalized = String(value).trim();
-  return normalized || fallback;
-};
-
-const parseEmail = (value) => {
-  const email = normalizeText(value, "").toLowerCase();
-  if (!email) {
-    throw createServiceError(
-      400,
-      "VALIDATION_ERROR",
-      "email is required and cannot be empty."
-    );
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    throw createServiceError(400, "VALIDATION_ERROR", "email must be valid.");
-  }
-
-  return email;
-};
-
-const parseDisplayName = (value) => {
-  const displayName = normalizeText(value, "");
-  if (!displayName) {
-    throw createServiceError(
-      400,
-      "VALIDATION_ERROR",
-      "displayName is required and cannot be empty."
-    );
-  }
-
-  return displayName;
-};
-
-const parseRole = (value, fallback = "buyer") => {
-  const role = normalizeRole(normalizeText(value, fallback), fallback);
-  if (!ASSIGNABLE_ROLE_VALUES.has(role)) {
-    throw createServiceError(
-      400,
-      "VALIDATION_ERROR",
-      `role must be one of: ${Array.from(ASSIGNABLE_ROLE_VALUES).join(", ")}.`
-    );
-  }
-
-  return role;
 };
 
 const ensureValidUserId = (id) => {
@@ -83,74 +27,6 @@ const ensureValidUserId = (id) => {
   }
 
   return rawId;
-};
-
-const validatePayloadShape = (payload) => {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    throw createServiceError(
-      400,
-      "VALIDATION_ERROR",
-      "Request body must be a JSON object."
-    );
-  }
-};
-
-const validateCreateUserPayload = (payload) => {
-  validatePayloadShape(payload);
-
-  const unknownFields = Object.keys(payload).filter(
-    (field) => !USER_ALLOWED_FIELDS.has(field)
-  );
-  if (unknownFields.length > 0) {
-    throw createServiceError(
-      400,
-      "VALIDATION_ERROR",
-      `Unknown field(s): ${unknownFields.join(", ")}.`
-    );
-  }
-
-  return {
-    displayName: parseDisplayName(payload.displayName),
-    email: parseEmail(payload.email),
-    role: parseRole(payload.role)
-  };
-};
-
-const validateUpdateUserPayload = (payload) => {
-  validatePayloadShape(payload);
-
-  const keys = Object.keys(payload);
-  if (keys.length === 0) {
-    throw createServiceError(
-      400,
-      "VALIDATION_ERROR",
-      "At least one field is required for update."
-    );
-  }
-
-  const unknownFields = keys.filter((field) => !USER_ALLOWED_FIELDS.has(field));
-  if (unknownFields.length > 0) {
-    throw createServiceError(
-      400,
-      "VALIDATION_ERROR",
-      `Unknown field(s): ${unknownFields.join(", ")}.`
-    );
-  }
-
-  const updateData = {};
-  if (Object.prototype.hasOwnProperty.call(payload, "displayName")) {
-    updateData.displayName = parseDisplayName(payload.displayName);
-  }
-
-  if (Object.prototype.hasOwnProperty.call(payload, "email")) {
-    updateData.email = parseEmail(payload.email);
-  }
-
-  if (Object.prototype.hasOwnProperty.call(payload, "role")) {
-    updateData.role = parseRole(payload.role);
-  }
-
-  return updateData;
 };
 
 const listUsers = async (query) => {
@@ -202,77 +78,9 @@ const getUserById = async (id) => {
   return user;
 };
 
-const createUser = async (payload) => {
-  const userData = validateCreateUserPayload(payload);
-
-  try {
-    return await User.create(userData);
-  } catch (error) {
-    if (error?.code === 11000) {
-      throw createServiceError(
-        409,
-        "DUPLICATE_EMAIL",
-        `User with email ${userData.email} already exists.`
-      );
-    }
-    throw error;
-  }
-};
-
-const updateUser = async (id, payload) => {
-  const userId = ensureValidUserId(id);
-  const updateData = validateUpdateUserPayload(payload);
-
-  try {
-    const updated = await User.findByIdAndUpdate(
-      userId,
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
-
-    if (!updated) {
-      throw createServiceError(404, "USER_NOT_FOUND", "User not found.");
-    }
-
-    return updated;
-  } catch (error) {
-    if (error?.code === 11000) {
-      throw createServiceError(
-        409,
-        "DUPLICATE_EMAIL",
-        `User with email ${updateData.email} already exists.`
-      );
-    }
-    throw error;
-  }
-};
-
-const deleteUser = async (id) => {
-  const userId = ensureValidUserId(id);
-  const acquisitionCount = await Acquisition.countDocuments({ userId });
-
-  if (acquisitionCount > 0) {
-    throw createServiceError(
-      409,
-      "USER_HAS_ACQUISITIONS",
-      "Cannot delete user with acquisition records."
-    );
-  }
-
-  const deleted = await User.findByIdAndDelete(userId);
-  if (!deleted) {
-    throw createServiceError(404, "USER_NOT_FOUND", "User not found.");
-  }
-
-  return deleted;
-};
-
 module.exports = {
   listUsers,
   getUserById,
-  createUser,
-  updateUser,
-  deleteUser,
   ensureValidUserId,
   createServiceError
 };

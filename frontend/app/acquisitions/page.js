@@ -4,6 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../components/AuthProvider";
 import StickyHeader from "../components/StickyHeader";
+import AppShell from "../components/ui/AppShell";
+import InlineAlert from "../components/ui/InlineAlert";
+import StatsGrid from "../components/ui/StatsGrid";
+import StatusBadge from "../components/ui/StatusBadge";
+import SurfaceCard from "../components/ui/SurfaceCard";
 import { apiBaseUrl, getAuthHeaders, readErrorMessage } from "../lib/api";
 
 const ACQUISITION_STATUS_OPTIONS = ["pending", "approved", "acquired", "rejected"];
@@ -42,6 +47,20 @@ export default function AcquisitionsPage() {
       }
     });
     return totals;
+  }, [acquisitions]);
+
+  const acquiredByUser = useMemo(() => {
+    const counts = new Map();
+    acquisitions.forEach((acq) => {
+      const normalizedStatus = acq.status === "considering" ? "pending" : acq.status;
+      if (normalizedStatus !== "acquired") {
+        return;
+      }
+
+      const userKey = acq.userId?._id ?? String(acq.userId ?? "");
+      counts.set(userKey, (counts.get(userKey) ?? 0) + 1);
+    });
+    return counts;
   }, [acquisitions]);
 
   const fetchUsers = useCallback(async () => {
@@ -206,30 +225,32 @@ export default function AcquisitionsPage() {
   return (
     <>
       <StickyHeader active="acquisitions" />
-      <main className="mx-auto flex max-w-6xl flex-col gap-4 p-4">
-        <section className="rounded-box border border-base-300 bg-base-100 p-4">
-          <h1 className="text-2xl font-bold">Acquisition Tracking</h1>
+      <AppShell>
+        <SurfaceCard>
+          <h1 className="text-3xl font-bold tracking-tight">Acquisition Tracking</h1>
           {!ready && <p className="text-sm">Loading session...</p>}
           {ready && (!isAuthenticated || !isManager) && (
             <p className="text-sm text-warning">Manager access required.</p>
           )}
-        </section>
+        </SurfaceCard>
 
         {ready && isAuthenticated && isManager && (
           <>
-            <section className="rounded-box border border-base-300 bg-base-100 p-4">
-              <p className="text-sm">
-                Pending: {acquisitionSummary.pending} | Approved: {acquisitionSummary.approved} |
-                Acquired: {acquisitionSummary.acquired} | Rejected:{" "}
-                {acquisitionSummary.rejected}
-              </p>
-            </section>
+            <SurfaceCard>
+              <StatsGrid
+                items={[
+                  { label: "Pending", value: acquisitionSummary.pending, tone: "warning" },
+                  { label: "Approved", value: acquisitionSummary.approved, tone: "info" },
+                  { label: "Acquired", value: acquisitionSummary.acquired, tone: "success" },
+                  { label: "Rejected", value: acquisitionSummary.rejected, tone: "error" }
+                ]}
+              />
+            </SurfaceCard>
 
-            <section className="rounded-box border border-base-300 bg-base-100 p-4">
-              <h2 className="mb-2 font-semibold">Create Acquisition</h2>
+            <SurfaceCard title="Create Acquisition">
               <form className="grid gap-2 md:grid-cols-3" onSubmit={createAcquisition}>
                 <select
-                  className="select select-bordered select-sm"
+                  className="select select-bordered ui-select"
                   required
                   disabled={users.length === 0}
                   value={form.userId}
@@ -245,7 +266,7 @@ export default function AcquisitionsPage() {
                   ))}
                 </select>
                 <input
-                  className="input input-bordered input-sm"
+                  className="input input-bordered ui-input"
                   type="number"
                   min="1"
                   required
@@ -256,7 +277,7 @@ export default function AcquisitionsPage() {
                   }
                 />
                 <select
-                  className="select select-bordered select-sm"
+                  className="select select-bordered ui-select"
                   value={form.status}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, status: event.target.value }))
@@ -269,7 +290,7 @@ export default function AcquisitionsPage() {
                   ))}
                 </select>
                 <input
-                  className="input input-bordered input-sm"
+                  className="input input-bordered ui-input"
                   type="number"
                   min="0"
                   step="0.01"
@@ -280,7 +301,7 @@ export default function AcquisitionsPage() {
                   }
                 />
                 <input
-                  className="input input-bordered input-sm"
+                  className="input input-bordered ui-input"
                   type="text"
                   placeholder="currency"
                   value={form.currency}
@@ -289,7 +310,7 @@ export default function AcquisitionsPage() {
                   }
                 />
                 <input
-                  className="input input-bordered input-sm"
+                  className="input input-bordered ui-input"
                   type="text"
                   placeholder="notes"
                   value={form.notes}
@@ -297,20 +318,19 @@ export default function AcquisitionsPage() {
                     setForm((prev) => ({ ...prev, notes: event.target.value }))
                   }
                 />
-                <button className="btn btn-sm btn-primary" type="submit" disabled={creating}>
+                <button className="ui-btn-primary" type="submit" disabled={creating}>
                   {creating ? "Creating..." : "Create Acquisition"}
                 </button>
               </form>
-              {actionError && <p className="mt-2 text-sm text-error">{actionError}</p>}
-              {actionMessage && <p className="mt-2 text-sm text-success">{actionMessage}</p>}
+              <InlineAlert message={actionError} tone="error" className="mt-3" />
+              <InlineAlert message={actionMessage} tone="success" className="mt-3" />
               {usersLoading && <p className="mt-2 text-sm">Loading users...</p>}
-              {usersError && <p className="mt-2 text-sm text-error">{usersError}</p>}
-            </section>
+              <InlineAlert message={usersError} tone="error" className="mt-3" />
+            </SurfaceCard>
 
-            <section className="rounded-box border border-base-300 bg-base-100 p-4">
-              <h2 className="mb-2 font-semibold">Acquisitions</h2>
+            <SurfaceCard title="Acquisitions">
               {acquisitionsLoading && <p className="text-sm">Loading acquisitions...</p>}
-              {acquisitionsError && <p className="text-sm text-error">{acquisitionsError}</p>}
+              <InlineAlert message={acquisitionsError} tone="error" className="mb-3" />
               {!acquisitionsLoading && acquisitions.length === 0 && (
                 <p className="text-sm">No acquisition records yet.</p>
               )}
@@ -319,58 +339,72 @@ export default function AcquisitionsPage() {
                   const normalizedStatus =
                     acquisition.status === "considering" ? "pending" : acquisition.status;
                   return (
-                    <article key={acquisition._id} className="rounded-box border border-base-300 p-3">
-                      <p className="text-sm">
-                        <strong>Status:</strong> {normalizedStatus}
-                      </p>
-                      <p className="text-sm">
-                        <strong>User:</strong>{" "}
-                        {acquisition.userId?.displayName ?? acquisition.userId}
-                      </p>
-                      <p className="text-sm">
-                        <strong>Artwork:</strong>{" "}
-                        {acquisition.artworkId?.title ?? acquisition.artworkId} (
-                        {acquisition.artworkId?.objectId ?? "n/a"})
-                      </p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {normalizedStatus !== "approved" &&
-                          normalizedStatus !== "acquired" && (
-                            <button
-                              type="button"
-                              className="btn btn-xs"
-                              disabled={updatingId === acquisition._id}
-                              onClick={() => updateStatus(acquisition, "approved")}
-                            >
-                              Approve
-                            </button>
-                          )}
-                        <button
-                          type="button"
-                          className="btn btn-xs"
-                          disabled={
-                            updatingId === acquisition._id || normalizedStatus !== "approved"
-                          }
-                          onClick={() => updateStatus(acquisition, "acquired")}
-                        >
-                          Mark Acquired
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-xs btn-error"
-                          disabled={deletingId === acquisition._id}
-                          onClick={() => removeAcquisition(acquisition)}
-                        >
-                          {deletingId === acquisition._id ? "Deleting..." : "Delete"}
-                        </button>
+                    <article
+                      key={acquisition._id}
+                      className="card surface-card surface-card-hover border border-base-200/70"
+                    >
+                      <div className="card-body p-3">
+                        <p className="text-sm">
+                          <strong>Status:</strong> <StatusBadge status={normalizedStatus} />
+                        </p>
+                        <p className="text-sm">
+                          <strong>User:</strong>{" "}
+                          {acquisition.userId?.displayName ?? acquisition.userId}
+                        </p>
+                        <p className="text-sm">
+                          <strong>Email:</strong> {acquisition.userId?.email ?? "n/a"}
+                        </p>
+                        <p className="text-sm">
+                          <strong>Total Acquired (User):</strong>{" "}
+                          {acquiredByUser.get(
+                            acquisition.userId?._id ?? String(acquisition.userId ?? "")
+                          ) ?? 0}
+                        </p>
+                        <p className="text-sm">
+                          <strong>Artwork:</strong>{" "}
+                          {acquisition.artworkId?.title ?? acquisition.artworkId} (
+                          {acquisition.artworkId?.objectId ?? "n/a"})
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {normalizedStatus !== "approved" &&
+                            normalizedStatus !== "acquired" && (
+                              <button
+                                type="button"
+                                className="ui-btn-secondary btn-sm"
+                                disabled={updatingId === acquisition._id}
+                                onClick={() => updateStatus(acquisition, "approved")}
+                              >
+                                Approve
+                              </button>
+                            )}
+                          <button
+                            type="button"
+                            className="ui-btn-secondary btn-sm"
+                            disabled={
+                              updatingId === acquisition._id || normalizedStatus !== "approved"
+                            }
+                            onClick={() => updateStatus(acquisition, "acquired")}
+                          >
+                            Mark Acquired
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-error"
+                            disabled={deletingId === acquisition._id}
+                            onClick={() => removeAcquisition(acquisition)}
+                          >
+                            {deletingId === acquisition._id ? "Deleting..." : "Delete"}
+                          </button>
+                        </div>
                       </div>
                     </article>
                   );
                 })}
               </div>
-            </section>
+            </SurfaceCard>
           </>
         )}
-      </main>
+      </AppShell>
     </>
   );
 }

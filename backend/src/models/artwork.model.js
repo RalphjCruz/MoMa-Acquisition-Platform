@@ -13,6 +13,16 @@ const artworkSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    imageUrl: {
+      type: String,
+      default: "",
+      trim: true
+    },
+    price: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
     artistDisplayName: {
       type: String,
       default: "Unknown Artist",
@@ -71,5 +81,6 @@ artworkSchema.index({
 artworkSchema.index({ department: 1 });
 artworkSchema.index({ classification: 1 });
 artworkSchema.index({ dateAcquired: -1 });
+artworkSchema.index({ price: 1 });
 
 module.exports = mongoose.model("Artwork", artworkSchema);
