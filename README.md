@@ -1,7 +1,13 @@
 ## Deliverables information
 4 minute video found in zip folder
+
 Scripts found in this README for server-side scripts to run Node.js app
-about.html which contains  (located in backend\src\views\about.html)
+
+about.html which contains  (located in backend\src\views\about.html):
+- Info about how the app works
+- Technologies used
+- Main limitations/weaknesses
+- Brief explanation of alternative approaches/technologies
 
 ## Ready-to-Run Setup
 
